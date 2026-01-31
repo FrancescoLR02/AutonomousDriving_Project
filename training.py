@@ -30,7 +30,7 @@ envName = "highway-v0"
 config = {
     "observation": {
         "type": "Kinematics",
-        "features": ["presence", "x", "y", "vx", "vy"],
+        "features": ["presence", "x", "y", "vx", "vy", "cos_h", "sin_h"],
         "normalize": True,   
         "absolute": False,
     },
@@ -41,9 +41,9 @@ config = {
     'screen_width': 1200,
     'duration': 40, 
     'vehicles_count': 20,
-    #"lane_change_reward": 0,
-    #'high_speed_reward': 0.5,
-    #'collision_reward': -2,
+    "lane_change_reward": 0,
+    'high_speed_reward': 0.5,
+    'collision_reward': -2,
 
 }
 
@@ -56,7 +56,7 @@ gamma = 0.99
 gaeLambda = 0.95
 clipCoeff = 0.2
 
-MAX_STEPS = int(1e6) 
+MAX_STEPS = int(5e5) 
 numSteps = 512
 batchSize = 256
 
