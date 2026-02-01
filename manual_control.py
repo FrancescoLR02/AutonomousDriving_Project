@@ -18,8 +18,10 @@ config = {
         "absolute": False,
     },
     "manual_control": True,
-    'high_speed_reward': 1,
-    'collision_reward': -10,
+    'screen_height': 300,
+    'screen_width': 1200,
+    'vehicles_count': 50,
+    'vehicles_density': 1.2
 
 }
 
@@ -53,7 +55,6 @@ with open(files['Data'], 'a', newline = '') as f1, open(files['Rewards'], 'a', n
     
     if needsHeader['Rewards']:
         rewardWriter.writerow(rewardsHeader)
-
 
     epReward = 0
 

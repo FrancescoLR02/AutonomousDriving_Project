@@ -25,11 +25,11 @@ class BaselineAgent:
       xBool = (x > 0)
       x, y = x[xBool], y[xBool]
 
-      forewardDistance =x
+      forewardDistance = x
       closestVehicle = np.argmin(forewardDistance)
 
-      #print(f"Ego Row: {state[0]}") 
-      #print(f"First Other Row: {state[1]}")
+      print(f"Ego Row: {state[0]}") 
+      print(f"First Other Row: {state[1]}")
 
       #If no one is close
       if forewardDistance[closestVehicle] > th:

@@ -24,17 +24,15 @@ config = {
         "type": "Kinematics",
         "vehicles_count": 10,
         "features": ["presence", "x", "y", "vx", "vy", "cos_h", "sin_h"],
-        "normalize": True,   
-        "absolute": False,
+        "normalize": False,   
+        "absolute": True,
     },
 
-    "ego_spacing": 1.5,
     "policy_frequency": 5,
-    'vehicles_count': 20, 
-    'vehicles_density': 1.5,
+    'vehicles_count': 50, 
+    'vehicles_density': 1.2,
     'collision_reward': -2.0,
-    'lane_change_reward': 0.2,
-    #'right_lane_reward': 0.0,
+    'lane_change_reward': 0.4,
 
 }
 
@@ -42,12 +40,12 @@ config = {
 env = gymnasium.make(envName, config=config, render_mode=None)
 
 #Training hyperparameters
-lr = 9e-5
+lr = 1e-4
 gamma = 0.99
 gaeLambda = 0.95
 clipCoeff = 0.2
 
-MAX_STEPS = int(3e5) 
+MAX_STEPS = int(8e4) 
 numSteps = 512
 batchSize = 256
 
@@ -104,10 +102,10 @@ for update in range(numEpisode):
         #If he doesn't crash, reward longer space travelled and more speed
 
         if truncated:
-            rewardBuffer[i] += nextState[0, 3]*5 #+ 0.05*nextState[0, 1]
+            rewardBuffer[i] += nextState[0, 3]*6 #+ 0.05*nextState[0, 1]
 
         if terminated:
-            rewardBuffer[i] -= 10
+            rewardBuffer[i] -= 5
 
 
         if done:
@@ -141,7 +139,7 @@ for update in range(numEpisode):
         advantage[t] = lastGAElam = targetTD + gamma * gaeLambda * nextNonTerminal * lastGAElam
 
     returns = advantage + valuesBuffer
-    advantage = (advantage - advantage.mean()) / (advantage.std() + 1e-8)
+    advantage = (advantage - advantage.mean()) / (advantage.std() + 1e-10)
 
     #Training on the batch of observations
     batchState = stateBuffer.reshape((-1, stateShape))
@@ -152,7 +150,7 @@ for update in range(numEpisode):
     batchValues = valuesBuffer.reshape(-1)
 
     #Use 3 times the batch to learn
-    for epoch in range(5):
+    for epoch in range(3):
 
         idxs = np.arange(numSteps)
         np.random.shuffle(idxs)
@@ -193,12 +191,12 @@ for update in range(numEpisode):
     MeanReward = rewardBuffer.sum()
 
     if MeanReward > InitialMeanReward:
-        torch.save(agent.state_dict(), "HighestReward.pth")
+        torch.save(agent.state_dict(), "HighestReward1.pth")
         InitialMeanReward = MeanReward
 
     print(f"Update {update+1}/{numEpisode} | Loss: {loss.item():.4f} | Mean Reward: {MeanReward:.2f}")
 
-torch.save(agent.state_dict(), "ppo_highway_agent.pth")
+torch.save(agent.state_dict(), "ppo_highway_agent1.pth")
 
 
 env.close()
