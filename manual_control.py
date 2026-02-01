@@ -1,5 +1,10 @@
+import numpy as np
 import gymnasium
 import highway_env
+import csv
+import os
+
+np.set_printoptions(linewidth=200, suppress=True, precision=5)
 
 
 # Remember to save what you will need for the plots
@@ -9,19 +14,12 @@ config = {
     "observation": {
         "type": "Kinematics",
         "features": ["presence", "x", "y", "vx", "vy"],
-        "normalize": True,   
+        "normalize": False,   
         "absolute": False,
     },
-    # "lanes_count": 3,
-    # "ego_spacing": 1.5,
     "manual_control": True,
-    # "policy_frequency": 5,
-    # 'screen_height': 300,
-    # 'screen_width': 1200,
-    # 'duration': 40, 
-    # 'vehicles_count': 50,
-    'high_speed_reward': 12,
-    # 'collision_reward': -1,
+    'high_speed_reward': 1,
+    'collision_reward': -10,
 
 }
 
@@ -34,21 +32,45 @@ episode = 1
 epSteps = 0
 epReturn = 0
 
-while episode <= 10:
-    epSteps += 1
+files = {
+    'Data': 'ManualControlActions.csv',
+    'Rewards': 'ManualControlRewards.csv'
+}
+rewardsHeader = ['Crashed', 'Rewards']
+actionsHeader = ['Speed', 'Action']
 
-    # Hint: take a look at the docs to see the difference between 'done' and 'truncated'
-    obs, reward, done, truncated, _ = env.step(env.action_space.sample())  # With manual control these actions are ignored
-    env.render()
+needsHeader = {key: not os.path.isfile(path) for key, path in files.items()}
 
-    epReturn += reward
+#Write on file the inforations
+with open(files['Data'], 'a', newline = '') as f1, open(files['Rewards'], 'a', newline = '') as f2:
 
-    if done or truncated:
-        print(f"Episode Num: {episode} Episode T: {epSteps} Return: {epReturn:.3f}, Crash: {done}")
+    dataWriter = csv.writer(f1)
+    rewardWriter = csv.writer(f2)
 
-        env.reset()
-        episode += 1
-        epSteps = 0
-        epReturn = 0
+    #Define the headers of the csv files
+    if needsHeader['Data']:
+        dataWriter.writerow(actionsHeader)
+    
+    if needsHeader['Rewards']:
+        rewardWriter.writerow(rewardsHeader)
+
+
+    epReward = 0
+
+    while True:
+        
+        #Take a step in the simulation
+        obs, reward, done, truncated, info = env.step(env.action_space.sample())
+
+        dataWriter.writerow([info['speed'], info['action']])
+
+        env.render()
+
+        #Compute final reward
+        epReward += reward
+
+        if done or truncated:
+            rewardWriter.writerow([info['crashed'], epReward])
+            state, _ = env.reset()
 
 env.close()

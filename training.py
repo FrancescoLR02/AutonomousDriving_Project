@@ -9,14 +9,6 @@ from Agent import *
 
 np.set_printoptions(linewidth=200, suppress=True, precision=5)
 
-
-# if torch.backends.mps.is_available():
-#     device = torch.device('mps')
-#     print('mps available')
-# else: 
-#     device = torch.device('cpu')
-#     print('cpu available')
-
 device = torch.device('cpu')
 print('cpu available')
 
@@ -30,20 +22,19 @@ envName = "highway-v0"
 config = {
     "observation": {
         "type": "Kinematics",
+        "vehicles_count": 10,
         "features": ["presence", "x", "y", "vx", "vy", "cos_h", "sin_h"],
         "normalize": True,   
         "absolute": False,
     },
-    "lanes_count": 3,
+
     "ego_spacing": 1.5,
     "policy_frequency": 5,
-    'screen_height': 300,
-    'screen_width': 1200,
-    'duration': 40, 
-    'vehicles_count': 20,
-    "lane_change_reward": 0,
-    'high_speed_reward': 0.5,
-    'collision_reward': -2,
+    'vehicles_count': 20, 
+    'vehicles_density': 1.5,
+    'collision_reward': -2.0,
+    'lane_change_reward': 0.2,
+    #'right_lane_reward': 0.0,
 
 }
 
@@ -51,12 +42,12 @@ config = {
 env = gymnasium.make(envName, config=config, render_mode=None)
 
 #Training hyperparameters
-lr = 2e-4
+lr = 9e-5
 gamma = 0.99
 gaeLambda = 0.95
 clipCoeff = 0.2
 
-MAX_STEPS = int(5e5) 
+MAX_STEPS = int(3e5) 
 numSteps = 512
 batchSize = 256
 
@@ -64,15 +55,16 @@ batchSize = 256
 agent = Agent(env).to(device)
 optimizer = optim.Adam(agent.parameters(), lr = lr)
 
+stateShape = np.prod(env.observation_space.shape)
 
 #Buffers
-stateBuffer = torch.zeros((numSteps, 25)).to(device)
+configSize = len(config['observation']['features'])
+stateBuffer = torch.zeros((numSteps, stateShape)).to(device)
 actionBuffer = torch.zeros((numSteps)).to(device)
 logProbBuffer = torch.zeros((numSteps)).to(device)
 rewardBuffer = torch.zeros((numSteps)).to(device)
 doneBuffer = torch.zeros((numSteps)).to(device)
 valuesBuffer = torch.zeros((numSteps)).to(device)
-
 
 state, _ = env.reset()
 
@@ -81,7 +73,9 @@ state = torch.Tensor(state).flatten().to(device)
 
 numEpisode = MAX_STEPS // numSteps
 
+InitialMeanReward = 0
 for update in range(numEpisode):
+
 
     #Replay buffer: stores numSteps 
     for i in range(numSteps):
@@ -101,6 +95,20 @@ for update in range(numEpisode):
         rewardBuffer[i] = reward
         doneBuffer[i] = done
         valuesBuffer[i] = value
+
+        # overtake = np.sum(np.array(nextState[1:, 1] < 0))
+
+        # if overtake > 0:
+        #     rewardBuffer[i] += overtake
+
+        #If he doesn't crash, reward longer space travelled and more speed
+
+        if truncated:
+            rewardBuffer[i] += nextState[0, 3]*5 #+ 0.05*nextState[0, 1]
+
+        if terminated:
+            rewardBuffer[i] -= 10
+
 
         if done:
             nextState, _ = env.reset()
@@ -136,7 +144,7 @@ for update in range(numEpisode):
     advantage = (advantage - advantage.mean()) / (advantage.std() + 1e-8)
 
     #Training on the batch of observations
-    batchState = stateBuffer.reshape((-1, 25))
+    batchState = stateBuffer.reshape((-1, stateShape))
     batchLogProb = logProbBuffer.reshape(-1)
     batchActions = actionBuffer.reshape(-1)
     batchAdvantages = advantage.reshape(-1)
@@ -169,20 +177,26 @@ for update in range(numEpisode):
             policyLoss2 = -mbAdvantage * torch.clamp(ratio, 1 - clipCoeff, 1 + clipCoeff)
             
             #Expectation value of PPO objective
-            policyLoss = torch.min(policyLoss1, policyLoss2).mean()
+            policyLoss = torch.max(policyLoss1, policyLoss2).mean()
 
             #value Loss 
             vLoss = 1/2 * ((newValue.view(-1) - batchReturns[idx]) ** 2).mean()
 
             #Total loss
-            loss = policyLoss - 0.08*entropy.mean() + 0.5*vLoss
+            loss = policyLoss - 0.03*entropy.mean() + 0.5*vLoss
 
             #Backpropagation
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
 
-    print(f"Update {update+1}/{numEpisode} | Loss: {loss.item():.4f} | Mean Reward: {rewardBuffer.sum():.2f}")
+    MeanReward = rewardBuffer.sum()
+
+    if MeanReward > InitialMeanReward:
+        torch.save(agent.state_dict(), "HighestReward.pth")
+        InitialMeanReward = MeanReward
+
+    print(f"Update {update+1}/{numEpisode} | Loss: {loss.item():.4f} | Mean Reward: {MeanReward:.2f}")
 
 torch.save(agent.state_dict(), "ppo_highway_agent.pth")
 

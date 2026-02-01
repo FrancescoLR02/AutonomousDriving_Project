@@ -3,6 +3,8 @@ import gymnasium
 import highway_env
 import torch
 import random
+import os 
+import csv
 
 from baseline import BaselineAgent
 from Agent import *
@@ -13,23 +15,24 @@ np.set_printoptions(linewidth=200, suppress=True, precision=5)
 # Set the seed and create the environment
 np.random.seed(0)
 random.seed(0)
-torch.manual_seed(0)
+torch.Agent_seed(0)
 
 envName = "highway-v0"
 config = {
     "observation": {
         "type": "Kinematics",
-        "features": ["presence", "x", "y", "vx", "vy"],
+        "vehicles_count": 10,
+        "features": ["presence", "x", "y", "vx", "vy", "cos_h", "sin_h"],
         "normalize": False,   
         "absolute": False,
     },
+    'screen_height': 300,
+    'screen_width': 1200,
     # "lanes_count": 3,
     # "ego_spacing": 1.5,
     # "policy_frequency": 5,
-    # 'screen_height': 300,
-    # 'screen_width': 1200,
     # 'duration': 40, 
-    # 'vehicles_count': 50,
+    'vehicles_count': 50,
     # 'high_speed_reward': 0.8,
     # 'collision_reward': -5,
 
@@ -44,6 +47,7 @@ if baseline:
     agent = BaselineAgent(env)
 else: 
     agent = Agent(env)
+    #checkpoint = torch.load("HighestReward.pth", map_location=torch.device('cpu'))
     checkpoint = torch.load("ppo_highway_agent.pth", map_location=torch.device('cpu'))
     agent.load_state_dict(checkpoint)
     agent.eval()
@@ -54,9 +58,16 @@ else:
 state, _ = env.reset()
 done, truncated = False, False
 
-episode = 1
-episodeSteps = 0
-episodeReturn = 0
+
+files = {
+    'Data': 'AgentControlActions.csv',
+    'Rewards': 'AgentControlRewards.csv'
+}
+rewardsHeader = ['TotalRewards']
+actionsHeader = ['Speed', 'Action', 'Crashed']
+
+needsHeader = {key: not os.path.isfile(path) for key, path in files.items()}
+
 
 while episode <= 15:
     episodeSteps += 1

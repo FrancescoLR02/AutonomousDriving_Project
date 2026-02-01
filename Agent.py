@@ -21,10 +21,10 @@ class Agent(nn.Module):
 
 
       self.Network = nn.Sequential(
-         nn.Linear(self.inputDim, 32), 
-         nn.ReLU(),
-         nn.Linear(32, 64),
-         nn.ReLU()
+         nn.Linear(self.inputDim, 64), 
+         nn.Tanh(),
+         nn.Linear(64, 64),
+         nn.Tanh()
       )
 
       self.Actor = nn.Linear(64, self.outputDim)
