@@ -42,8 +42,8 @@ if baseline:
     agent = BaselineAgent(env)
 else: 
     agent = Agent(env)
-    checkpoint = torch.load("HighestReward.pth", map_location=torch.device('cpu'))
-    #checkpoint = torch.load("ppo_highway_agent.pth", map_location=torch.device('cpu'))
+    #checkpoint = torch.load("HighestReward.pth", map_location=torch.device('cpu'))
+    checkpoint = torch.load("ppo_highway_agent.pth", map_location=torch.device('cpu'))
     agent.load_state_dict(checkpoint)
     agent.eval()
 
