@@ -26,12 +26,14 @@ config = {
         "type": "Kinematics",
         "vehicles_count": 10,
         "features": ["presence", "x", "y", "vx", "vy", "cos_h", "sin_h"],
-        "normalize": True,   
-        "absolute": True,
+        "normalize": not(baseline),   
+        "absolute": False,
     },
     'screen_height': 300,
     'screen_width': 1200,
     'vehicles_count': 50,
+    "policy_frequency": 5,
+    'vehicles_density': 1.1,
 
 }
 
@@ -43,7 +45,7 @@ if baseline:
 else: 
     agent = Agent(env)
     #checkpoint = torch.load("HighestReward.pth", map_location=torch.device('cpu'))
-    checkpoint = torch.load("ppo_highway_agent.pth", map_location=torch.device('cpu'))
+    checkpoint = torch.load("ppo_highway_agent1.pth", map_location=torch.device('cpu'))
     agent.load_state_dict(checkpoint)
     agent.eval()
 

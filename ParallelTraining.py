@@ -31,30 +31,32 @@ def main():
 
       "policy_frequency": 5,
       'vehicles_count': 50, 
-      'vehicles_density': 1.2,
-      'collision_reward': -2.0,
-      'lane_change_reward': 0.2,
+      'vehicles_density': 1.1,
+      'collision_reward': -10.0,
+      #'high_speed_reward': 0.6,
+      'right_lane_reward': 0.3,
+      'lane_change_reward': 0,
+      'duration': 60,
+
 
    }
 
    numEvents = 5
    envs = gymnasium.make_vec(envName, config = config, num_envs=numEvents, vectorization_mode="async")
 
-   lr = 1e-4
+   lr = 9e-5
    gamma = 0.99
    gaeLambda = 0.95
    clipCoeff = 0.2
 
-   MAX_STEPS = int(8e4) 
+   MAX_STEPS = int(2e5) 
    numSteps = 256 # 256*numEvents
-   batchSize = 512
+   batchSize = 256
 
    agent = Agent(envs).to(device)
    optimizer = optim.Adam(agent.parameters(), lr = lr)
 
    stateShape = np.prod(envs.observation_space.shape[1:])
-   configSize = len(config['observation']['features'])
-
 
    stateBuffer = torch.zeros((numSteps, numEvents, stateShape)).to(device)
    actionBuffer = torch.zeros((numSteps, numEvents)).to(device)
@@ -88,12 +90,25 @@ def main():
 
 
          nextState, reward, terminated, truncated, _ = envs.step(actions.cpu().numpy())
-         rewardBuffer[i] = torch.tensor(reward).to(device).view(-1)
 
          done = torch.tensor(terminated | truncated).to(device).float()
          nextState = torch.Tensor(nextState).flatten().reshape((numEvents, stateShape)).to(device)
-
          nextDone = done
+
+
+         reward = torch.tensor(reward).to(device).view(-1)
+         truncated = torch.tensor(truncated).to(device).float()
+
+         velocityReward = truncated*stateBuffer[i][:, 3]
+
+         #Overtake logic
+         currentState3D = stateBuffer[i].view(numEvents, 10, 7)
+         neighborVx = currentState3D[:, 1:, 3]
+         passingFlow = torch.mean(torch.clamp(-neighborVx, min=0), dim=1)
+         overtakeReward = passingFlow
+
+         #Bonus if car goes fast
+         rewardBuffer[i] = reward + velocityReward*2 + overtakeReward*10
 
 
       #Compute the next value in the next state
@@ -171,10 +186,6 @@ def main():
             optimizer.step()
 
       MeanReward = rewardBuffer.sum()
-
-      if MeanReward > InitialMeanReward:
-         torch.save(agent.state_dict(), "HighestReward1.pth")
-         InitialMeanReward = MeanReward
 
       print(f"Update {step+1}/{MAX_UPDATES} | Loss: {loss.item():.4f} | Mean Reward: {MeanReward:.2f}")
 

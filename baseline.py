@@ -9,6 +9,7 @@ ACTIONS_ALL = {
    }
 
 CHANGE_LANE = [0, 2]
+SLOWER = [4]
 
 
 class BaselineAgent:
@@ -41,6 +42,9 @@ class BaselineAgent:
 
          if np.abs(yClosest) < epsilon:
             availableActions = self.env.unwrapped.action_type.get_available_actions()
+
+            if np.isin(SLOWER, availableActions):
+               return self.env.unwrapped.action_type.actions_indexes["SLOWER"]
 
             #Check what action is in available actions
             changeLane = np.isin(CHANGE_LANE, availableActions)
