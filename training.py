@@ -24,15 +24,18 @@ config = {
         "type": "Kinematics",
         "vehicles_count": 10,
         "features": ["presence", "x", "y", "vx", "vy", "cos_h", "sin_h"],
-        "normalize": False,   
-        "absolute": True,
+        "normalize": True,   
+        "absolute": False,
     },
 
-    "policy_frequency": 5,
-    'vehicles_count': 50, 
-    'vehicles_density': 1.2,
-    'collision_reward': -2.0,
-    'lane_change_reward': 0.4,
+      "policy_frequency": 5,
+      'vehicles_count': 50, 
+      'vehicles_density': 1.1,
+      'collision_reward': -3.0,
+      'high_speed_reward': 0.5,
+      'right_lane_reward': 0.3,
+      'lane_change_reward': 0,
+      'duration': 60,
 
 }
 
@@ -45,8 +48,8 @@ gamma = 0.99
 gaeLambda = 0.95
 clipCoeff = 0.2
 
-MAX_STEPS = int(8e4) 
-numSteps = 512
+MAX_STEPS = int(5e5) 
+numSteps = 768
 batchSize = 256
 
 
@@ -101,11 +104,19 @@ for update in range(numEpisode):
 
         #If he doesn't crash, reward longer space travelled and more speed
 
-        if truncated:
-            rewardBuffer[i] += nextState[0, 3]*6 #+ 0.05*nextState[0, 1]
+        # if truncated:
+        #     rewardBuffer[i] += nextState[0, 3]*6 #+ 0.05*nextState[0, 1]
 
-        if terminated:
-            rewardBuffer[i] -= 5
+        # if terminated:
+        #     rewardBuffer[i] -= 5
+
+        currentState3D = stateBuffer[i].view(10, 7)
+        neighborVx = currentState3D[1:, 3]
+        passingFlow = torch.mean(torch.clamp(-neighborVx, min=0))
+        overtakeReward = passingFlow
+
+        #Bonus if car goes fast
+        rewardBuffer[i] = reward + overtakeReward*5
 
 
         if done:
@@ -196,7 +207,7 @@ for update in range(numEpisode):
 
     print(f"Update {update+1}/{numEpisode} | Loss: {loss.item():.4f} | Mean Reward: {MeanReward:.2f}")
 
-torch.save(agent.state_dict(), "ppo_highway_agent1.pth")
+torch.save(agent.state_dict(), "singleTraining.pth")
 
 
 env.close()
