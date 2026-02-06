@@ -31,9 +31,16 @@ config = {
     },
     'screen_height': 300,
     'screen_width': 1200,
-    'vehicles_count': 50,
+    'initial_lane_id': 3,
     "policy_frequency": 5,
-    'vehicles_density': 1.1,
+    'vehicles_count': 30, 
+    'vehicles_density': 1.5,
+    'collision_reward': -2,
+    'high_speed_reward': 1,
+    'right_lane_reward': 0.05,
+    'lane_change_reward': 0,
+    'duration': 60,
+    'reward_speed_range': [20, 30]
 
 }
 
@@ -91,11 +98,17 @@ with open(files['Data'], 'a', newline = '') as f1, open(files['Rewards'], 'a', n
 
         if baseline: action = agent.BasePolicy(state)
         else: 
-            state = torch.Tensor(state).flatten()
-            action, _, _, _ = agent.GetActionValue(state)
+            state = torch.as_tensor(state, dtype=torch.float32).flatten().unsqueeze(0)
+
+            with torch.no_grad():
+                hidden = agent.Network(state)
+                logits = agent.Actor(hidden)
+                print(logits)
+
+                action = torch.argmax(logits).item()
         
         #Take a step in the simulation
-        obs, reward, done, truncated, info = env.step(action)
+        nextState, reward, done, truncated, info = env.step(action)
 
         dataWriter.writerow([info['speed'], info['action']])
 
@@ -104,8 +117,12 @@ with open(files['Data'], 'a', newline = '') as f1, open(files['Rewards'], 'a', n
         #Compute final reward
         epReward += reward
 
+        #update state
+        state = nextState
+
         if done or truncated:
             rewardWriter.writerow([info['crashed'], epReward])
             state, _ = env.reset()
+            epReward = 0
 
 env.close()

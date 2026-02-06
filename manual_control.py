@@ -58,10 +58,12 @@ with open(files['Data'], 'a', newline = '') as f1, open(files['Rewards'], 'a', n
 
     epReward = 0
 
-    while True:
+    run = True
+    while run:
         
         #Take a step in the simulation
         obs, reward, done, truncated, info = env.step(env.action_space.sample())
+        print(obs)
 
         dataWriter.writerow([info['speed'], info['action']])
 
@@ -73,5 +75,7 @@ with open(files['Data'], 'a', newline = '') as f1, open(files['Rewards'], 'a', n
         if done or truncated:
             rewardWriter.writerow([info['crashed'], epReward])
             state, _ = env.reset()
+            run = False
+
 
 env.close()

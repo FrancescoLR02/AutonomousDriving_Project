@@ -6,16 +6,6 @@ from torch.distributions.categorical import Categorical
 
 
 def LayerInit(layer, std=np.sqrt(2), bias_const=0.0):
-   """
-   Helper function to apply orthogonal initialization.
-   Args:
-       layer: The Linear layer to initialize
-       std: The gain (standard deviation) for the weights. 
-            - sqrt(2) is used for layers before Tanh/Relu
-            - 0.01 is used for the Actor output to ensure random initial actions
-            - 1.0 is standard for Critic output
-       bias_const: Value to initialize bias (usually 0)
-   """
    torch.nn.init.orthogonal_(layer.weight, std)
    torch.nn.init.constant_(layer.bias, bias_const)
    return layer
@@ -36,14 +26,14 @@ class Agent(nn.Module):
 
 
       self.Network = nn.Sequential(
-         LayerInit(nn.Linear(self.inputDim, 64), std = np.sqrt(2)),
+         LayerInit(nn.Linear(self.inputDim, 512), std = np.sqrt(2)),
          nn.Tanh(),
-         LayerInit(nn.Linear(64, 64), std = np.sqrt(2)),
+         LayerInit(nn.Linear(512, 256), std = np.sqrt(2)),
          nn.Tanh()
       )
 
-      self.Actor = LayerInit(nn.Linear(64, self.outputDim), std=0.01)
-      self.Critic = LayerInit(nn.Linear(64, 1), std = 1)
+      self.Actor = LayerInit(nn.Linear(256, self.outputDim), std=1)
+      self.Critic = LayerInit(nn.Linear(256, 1), std = 1)
 
    #Critics prediction
    def GetValue(self, x):

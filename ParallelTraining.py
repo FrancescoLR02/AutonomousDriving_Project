@@ -29,15 +29,12 @@ def main():
          "normalize": True,   
          "absolute": False,
       },
-
-      "policy_frequency": 2,
-      'vehicles_count': 50, 
-      'vehicles_density': 1.1,
-      'collision_reward': -5.0,
-      'high_speed_reward': 0.5,
+      'duration': 60,
+      "policy_frequency": 5,
+      'collision_reward': -1,
+      'high_speed_reward': 1.5,
       'right_lane_reward': 0.1,
       'lane_change_reward': 0.1,
-      'duration': 60,
       'reward_speed_range': [20, 30]
 
 
@@ -46,14 +43,14 @@ def main():
    numEvents = 5
    envs = gymnasium.make_vec(envName, config = config, num_envs=numEvents, vectorization_mode="async")
 
-   lr = 1e-4
+   lr = 3e-5
    gamma = 0.99
    gaeLambda = 0.95
    clipCoeff = 0.2
 
-   MAX_STEPS = int(5e5) 
-   numSteps = 500 # 256*numEvents
-   batchSize = 100
+   MAX_STEPS = int(1e6) 
+   numSteps = 600
+   batchSize = 200
 
    agent = Agent(envs).to(device)
    optimizer = optim.Adam(agent.parameters(), lr = lr)
@@ -99,16 +96,7 @@ def main():
          reward = torch.tensor(reward).to(device).view(-1)
          truncated = torch.tensor(truncated).to(device).float()
 
-         # velocityReward = truncated*stateBuffer[i][:, 3]
-
-         # #Overtake logic
-         # currentState3D = stateBuffer[i].view(numEvents, 10, 7)
-         # neighborVx = currentState3D[:, 1:, 3]
-         # passingFlow = torch.mean(torch.clamp(-neighborVx, min=0), dim=1)
-         # overtakeReward = passingFlow
-
-         #Bonus if car goes fast
-         rewardBuffer[i] = reward# + overtakeReward*5 #+ velocityReward*2 + 
+         rewardBuffer[i] = reward
 
 
       #Compute the next value in the next state
@@ -148,10 +136,10 @@ def main():
       totSamples = batchState.size(0)
       idxs = np.arange(totSamples)
 
+
       for epoch in range(3):
 
          np.random.shuffle(idxs)
-
          for start in range(0, totSamples, batchSize):
             
             #Select the batch indexes data
@@ -178,7 +166,7 @@ def main():
             vLoss = 1/2 * ((newValue.view(-1) - batchReturns[idx]) ** 2).mean()
 
             #Total loss
-            loss = policyLoss - 0.02*entropy.mean() + 0.5*vLoss
+            loss = policyLoss - 0.03*entropy.mean() + 0.5*vLoss
 
             #Backpropagation
             optimizer.zero_grad()
@@ -186,9 +174,7 @@ def main():
             torch.nn.utils.clip_grad_norm_(agent.parameters(), max_norm=0.5)
             optimizer.step()
 
-      MeanReward = rewardBuffer.sum()
-
-      print(f"Update {step+1}/{MAX_UPDATES} | Loss: {loss.item():.4f} | Mean Reward: {MeanReward:.2f}")
+      print(f"Update {step+1}/{MAX_UPDATES} | Loss: {loss.item():.4f} | Mean Reward: {rewardBuffer.sum():.2f} +- {rewardBuffer.std():.2f}")
 
       torch.save(agent.state_dict(), "ppo_highway_agent1.pth")
 
