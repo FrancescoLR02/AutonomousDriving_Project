@@ -25,16 +25,16 @@ def main():
       "observation": {
          "type": "Kinematics",
          "vehicles_count": 10,
-         "features": ["presence", "x", "y", "vx", "vy", 'cos_h', 'sin_h'],
+         "features": ["presence", "x", "y", "vx", "vy"],
          "normalize": True,   
          "absolute": False,
       },
       'duration': 60,
       "policy_frequency": 5,
       'collision_reward': -1,
-      'high_speed_reward': 1.5,
-      'right_lane_reward': 0.1,
-      'lane_change_reward': 0.1,
+      'high_speed_reward': 1,
+      'right_lane_reward': 0,
+      'lane_change_reward': 1,
       'reward_speed_range': [20, 30]
 
 
@@ -43,14 +43,14 @@ def main():
    numEvents = 5
    envs = gymnasium.make_vec(envName, config = config, num_envs=numEvents, vectorization_mode="async")
 
-   lr = 3e-5
+   lr = 3e-4
    gamma = 0.99
    gaeLambda = 0.95
    clipCoeff = 0.2
 
    MAX_STEPS = int(1e6) 
-   numSteps = 600
-   batchSize = 200
+   numSteps = 1024
+   batchSize = 512
 
    agent = Agent(envs).to(device)
    optimizer = optim.Adam(agent.parameters(), lr = lr)
@@ -76,7 +76,7 @@ def main():
       for i in range(numSteps):
 
          stateBuffer[i] = nextState
-         doneBuffer[i] = nextDone
+         #doneBuffer[i] = nextDone
 
          with torch.no_grad():
             actions, logProbs, _, values = agent.GetActionValue(nextState)
@@ -89,14 +89,15 @@ def main():
          nextState, reward, terminated, truncated, _ = envs.step(actions.cpu().numpy())
 
          done = torch.tensor(terminated | truncated).to(device).float()
+         doneBuffer[i] = done
          nextState = torch.Tensor(nextState).flatten().reshape((numEvents, stateShape)).to(device)
-         nextDone = done
-
 
          reward = torch.tensor(reward).to(device).view(-1)
          truncated = torch.tensor(truncated).to(device).float()
 
          rewardBuffer[i] = reward
+
+         #print(i, reward, done)
 
 
       #Compute the next value in the next state
@@ -110,11 +111,11 @@ def main():
       for t in reversed(range(numSteps)):
          if t == numSteps - 1:
             # we calculated outside the loop to bootstrap.
-            nextNonTerminal = 1.0 - nextDone
-            nextValues = nextValue.reshape(-1)
+            nextNonTerminal = 1.0 - doneBuffer[-1]
+            nextValues = nextValue
          # Otherwise, we look at the next tep in the buffer
          else:
-            nextNonTerminal = 1.0 - doneBuffer[t + 1]
+            nextNonTerminal = 1.0 - doneBuffer[t]
             nextValues = valuesBuffer[t + 1]
 
          #element-wise operation on tensors of shape
@@ -137,7 +138,7 @@ def main():
       idxs = np.arange(totSamples)
 
 
-      for epoch in range(3):
+      for epoch in range(4):
 
          np.random.shuffle(idxs)
          for start in range(0, totSamples, batchSize):
@@ -166,7 +167,7 @@ def main():
             vLoss = 1/2 * ((newValue.view(-1) - batchReturns[idx]) ** 2).mean()
 
             #Total loss
-            loss = policyLoss - 0.03*entropy.mean() + 0.5*vLoss
+            loss = policyLoss - 0.03*entropy.mean() + vLoss
 
             #Backpropagation
             optimizer.zero_grad()

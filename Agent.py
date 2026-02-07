@@ -29,16 +29,18 @@ class Agent(nn.Module):
          LayerInit(nn.Linear(self.inputDim, 512), std = np.sqrt(2)),
          nn.Tanh(),
          LayerInit(nn.Linear(512, 256), std = np.sqrt(2)),
+         nn.Tanh(),
+         LayerInit(nn.Linear(256, 128), std = np.sqrt(2)),
          nn.Tanh()
       )
 
-      self.Actor = LayerInit(nn.Linear(256, self.outputDim), std=1)
-      self.Critic = LayerInit(nn.Linear(256, 1), std = 1)
+      self.Actor = LayerInit(nn.Linear(128, self.outputDim), std=0.1)
+      self.Critic = LayerInit(nn.Linear(128, 1), std = 1)
 
    #Critics prediction
    def GetValue(self, x):
       #x = x.flatten(start_dim = 1)
-      self.Critic(self.Network(x))
+      return self.Critic(self.Network(x))
 
    def GetActionValue(self, x, action = None):
       

@@ -25,20 +25,15 @@ config = {
     "observation": {
         "type": "Kinematics",
         "vehicles_count": 10,
-        "features": ["presence", "x", "y", "vx", "vy", "cos_h", "sin_h"],
+        "features": ["presence", "x", "y", "vx", "vy"],
         "normalize": not(baseline),   
         "absolute": False,
     },
     'screen_height': 300,
     'screen_width': 1200,
-    'initial_lane_id': 3,
     "policy_frequency": 5,
     'vehicles_count': 30, 
     'vehicles_density': 1.5,
-    'collision_reward': -2,
-    'high_speed_reward': 1,
-    'right_lane_reward': 0.05,
-    'lane_change_reward': 0,
     'duration': 60,
     'reward_speed_range': [20, 30]
 

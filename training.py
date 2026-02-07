@@ -4,6 +4,7 @@ import numpy as np
 import torch
 import random
 from tqdm import tqdm
+import matplotlib.pyplot as plt
 
 from Agent import *
 
@@ -24,18 +25,18 @@ config = {
         "type": "Kinematics",
         "vehicles_count": 10,
         "features": ["presence", "x", "y", "vx", "vy", "cos_h", "sin_h"],
-        "normalize": True,   
+        "normalize": False,   
         "absolute": False,
     },
 
       "policy_frequency": 5,
-      'vehicles_count': 50, 
-      'vehicles_density': 1.1,
-      'collision_reward': -3.0,
-      'high_speed_reward': 0.5,
-      'right_lane_reward': 0.3,
-      'lane_change_reward': 0,
-      'duration': 60,
+      'vehicles_count': 20, 
+    #   'vehicles_density': 1.1,
+       'collision_reward': -3.0,
+       'high_speed_reward': 100,
+    #   'right_lane_reward': 0.3,
+    #   'lane_change_reward': 0,
+    #   'duration': 60,
 
 }
 
@@ -49,7 +50,7 @@ gaeLambda = 0.95
 clipCoeff = 0.2
 
 MAX_STEPS = int(5e5) 
-numSteps = 768
+numSteps = 200
 batchSize = 256
 
 
@@ -96,34 +97,19 @@ for update in range(numEpisode):
         rewardBuffer[i] = reward
         doneBuffer[i] = done
         valuesBuffer[i] = value
+        rewardBuffer[i] = reward
 
-        # overtake = np.sum(np.array(nextState[1:, 1] < 0))
-
-        # if overtake > 0:
-        #     rewardBuffer[i] += overtake
-
-        #If he doesn't crash, reward longer space travelled and more speed
-
-        # if truncated:
-        #     rewardBuffer[i] += nextState[0, 3]*6 #+ 0.05*nextState[0, 1]
-
-        # if terminated:
-        #     rewardBuffer[i] -= 5
-
-        currentState3D = stateBuffer[i].view(10, 7)
-        neighborVx = currentState3D[1:, 3]
-        passingFlow = torch.mean(torch.clamp(-neighborVx, min=0))
-        overtakeReward = passingFlow
-
-        #Bonus if car goes fast
-        rewardBuffer[i] = reward + overtakeReward*5
-
+        #print(action.item(), np.round(reward, 8), done)
+    
 
         if done:
             nextState, _ = env.reset()
 
         #Update state
         state = torch.as_tensor(nextState, dtype=torch.float32, device=device).flatten()
+    
+    #print(rewardBuffer.mean())
+
 
     #Compute the advantage
     with torch.no_grad():
@@ -205,7 +191,7 @@ for update in range(numEpisode):
         torch.save(agent.state_dict(), "HighestReward1.pth")
         InitialMeanReward = MeanReward
 
-    print(f"Update {update+1}/{numEpisode} | Loss: {loss.item():.4f} | Mean Reward: {MeanReward:.2f}")
+    #print(f"Update {update+1}/{numEpisode} | Loss: {loss.item():.4f} | Mean Reward: {MeanReward:.2f}")
 
 torch.save(agent.state_dict(), "singleTraining.pth")
 
