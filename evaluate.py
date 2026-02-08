@@ -26,16 +26,15 @@ config = {
         "type": "Kinematics",
         "vehicles_count": 10,
         "features": ["presence", "x", "y", "vx", "vy"],
-        "normalize": not(baseline),   
+        "normalize": True,   
         "absolute": False,
     },
     'screen_height': 300,
     'screen_width': 1200,
-    "policy_frequency": 5,
-    'vehicles_count': 30, 
-    'vehicles_density': 1.5,
+    "policy_frequency": 1,
     'duration': 60,
-    'reward_speed_range': [20, 30]
+    'vehicles_count': 10,
+    'vehicles_density': 1
 
 }
 
@@ -47,7 +46,7 @@ if baseline:
 else: 
     agent = Agent(env)
     #checkpoint = torch.load("HighestReward.pth", map_location=torch.device('cpu'))
-    checkpoint = torch.load("ppo_highway_agent1.pth", map_location=torch.device('cpu'))
+    checkpoint = torch.load("singleTraining.pth", map_location=torch.device('cpu'))
     agent.load_state_dict(checkpoint)
     agent.eval()
 
@@ -88,8 +87,10 @@ with open(files['Data'], 'a', newline = '') as f1, open(files['Rewards'], 'a', n
 
 
     epReward = 0
+    episode = 0
 
     while True:
+        episode += 1
 
         if baseline: action = agent.BasePolicy(state)
         else: 
@@ -101,7 +102,7 @@ with open(files['Data'], 'a', newline = '') as f1, open(files['Rewards'], 'a', n
                 print(logits)
 
                 action = torch.argmax(logits).item()
-        
+                    
         #Take a step in the simulation
         nextState, reward, done, truncated, info = env.step(action)
 
@@ -116,8 +117,10 @@ with open(files['Data'], 'a', newline = '') as f1, open(files['Rewards'], 'a', n
         state = nextState
 
         if done or truncated:
+            dataWriter.writerow(f'Episode: {episode}')
             rewardWriter.writerow([info['crashed'], epReward])
             state, _ = env.reset()
             epReward = 0
+
 
 env.close()

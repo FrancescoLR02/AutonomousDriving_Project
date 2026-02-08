@@ -26,12 +26,10 @@ class Agent(nn.Module):
 
 
       self.Network = nn.Sequential(
-         LayerInit(nn.Linear(self.inputDim, 512), std = np.sqrt(2)),
-         nn.Tanh(),
-         LayerInit(nn.Linear(512, 256), std = np.sqrt(2)),
-         nn.Tanh(),
+         LayerInit(nn.Linear(self.inputDim, 256), std = np.sqrt(2)),
+         nn.ReLU(),
          LayerInit(nn.Linear(256, 128), std = np.sqrt(2)),
-         nn.Tanh()
+         nn.ReLU()
       )
 
       self.Actor = LayerInit(nn.Linear(128, self.outputDim), std=0.1)

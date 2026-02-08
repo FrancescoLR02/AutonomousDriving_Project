@@ -27,14 +27,15 @@ def main():
          "vehicles_count": 10,
          "features": ["presence", "x", "y", "vx", "vy"],
          "normalize": True,   
-         "absolute": False,
+         "absolute": True,
       },
       'duration': 60,
+      'initial_lane_id': None,
       "policy_frequency": 5,
       'collision_reward': -1,
       'high_speed_reward': 1,
-      'right_lane_reward': 0,
-      'lane_change_reward': 1,
+      'right_lane_reward': 0.05,
+      #'lane_change_reward': 0.1,
       'reward_speed_range': [20, 30]
 
 
@@ -84,6 +85,12 @@ def main():
             valuesBuffer[i] = values.flatten()
             actionBuffer[i] = actions
             logProbBuffer[i] = logProbs
+
+         print(envs.unwrapped.actions_type.get_available_actions())
+
+         #Check if the actions are valid:
+         #for i in range(numEvents):
+            #validActions[i] = np.isin()
 
 
          nextState, reward, terminated, truncated, _ = envs.step(actions.cpu().numpy())

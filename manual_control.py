@@ -20,8 +20,17 @@ config = {
     "manual_control": True,
     'screen_height': 300,
     'screen_width': 1200,
-    'vehicles_count': 50,
-    'vehicles_density': 1.2
+    'duration': 40,
+    'lanes_count': 3,
+    'initial_lane_id': None,
+    "policy_frequency": 5,
+    'collision_reward': -1,
+    'high_speed_reward': 0.8,
+    'right_lane_reward': 0,
+    'lane_change_reward': 0.05,
+    'reward_speed_range': [25, 30],
+    'vehicles_count': 10,
+    'vehicles_density': 1
 
 }
 
@@ -63,7 +72,7 @@ with open(files['Data'], 'a', newline = '') as f1, open(files['Rewards'], 'a', n
         
         #Take a step in the simulation
         obs, reward, done, truncated, info = env.step(env.action_space.sample())
-        print(obs)
+        print(info['action'], np.round(reward, 4))
 
         dataWriter.writerow([info['speed'], info['action']])
 

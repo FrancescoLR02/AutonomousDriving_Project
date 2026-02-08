@@ -24,34 +24,35 @@ config = {
     "observation": {
         "type": "Kinematics",
         "vehicles_count": 10,
-        "features": ["presence", "x", "y", "vx", "vy", "cos_h", "sin_h"],
-        "normalize": False,   
+        "features": ["presence", "x", "y", "vx", "vy"],
+        "normalize": True,   
         "absolute": False,
     },
-
-      "policy_frequency": 5,
-      'vehicles_count': 20, 
-    #   'vehicles_density': 1.1,
-       'collision_reward': -3.0,
-       'high_speed_reward': 100,
-    #   'right_lane_reward': 0.3,
-    #   'lane_change_reward': 0,
-    #   'duration': 60,
-
+    'duration': 40,
+    'lanes_count': 3,
+    'initial_lane_id': None,
+    "policy_frequency": 5,
+    'collision_reward': -1,
+    'high_speed_reward': 0.8,
+    'right_lane_reward': 0.05,
+    'lane_change_reward': 0.05,
+    'reward_speed_range': [25, 30],
+    'vehicles_count': 10,
+    'vehicles_density': 1
 }
 
 
 env = gymnasium.make(envName, config=config, render_mode=None)
 
 #Training hyperparameters
-lr = 1e-4
+lr = 7e-5
 gamma = 0.99
 gaeLambda = 0.95
 clipCoeff = 0.2
 
 MAX_STEPS = int(5e5) 
-numSteps = 200
-batchSize = 256
+numSteps = 1024
+batchSize = 512
 
 
 agent = Agent(env).to(device)
@@ -86,29 +87,26 @@ for update in range(numEpisode):
         with torch.no_grad():
             action, logProb, _, value = agent.GetActionValue(state.unsqueeze(0))
 
+        availableActions = env.unwrapped.action_type.get_available_actions()
 
         nextState, reward, terminated, truncated, _ = env.step(action.item())
-        
-        done = terminated or truncated
 
+        rewardBuffer[i] = reward
+        done = terminated or truncated
         stateBuffer[i] = state
         actionBuffer[i] = action
         logProbBuffer[i] = logProb
-        rewardBuffer[i] = reward
         doneBuffer[i] = done
         valuesBuffer[i] = value
-        rewardBuffer[i] = reward
 
-        #print(action.item(), np.round(reward, 8), done)
-    
-
+        #print(action.item(), np.round(rewardBuffer[i], 8), done)
+        
+        
         if done:
             nextState, _ = env.reset()
 
         #Update state
         state = torch.as_tensor(nextState, dtype=torch.float32, device=device).flatten()
-    
-    #print(rewardBuffer.mean())
 
 
     #Compute the advantage
@@ -124,11 +122,11 @@ for update in range(numEpisode):
         if t == numSteps - 1:
 
             #Either 0 or 1 depending whather the episode is done or not
-            nextNonTerminal = 1 - doneBuffer[t]
+            nextNonTerminal = 1 - done
             nextValues = nextValue
 
         else:
-            nextNonTerminal = 1 - doneBuffer[t + 1].item()
+            nextNonTerminal = 1 - doneBuffer[t].item()
             nextValues = valuesBuffer[t + 1]
 
         #COmpute the target and advantage array 
@@ -183,17 +181,14 @@ for update in range(numEpisode):
             #Backpropagation
             optimizer.zero_grad()
             loss.backward()
+            torch.nn.utils.clip_grad_norm_(agent.parameters(), max_norm=0.5)
             optimizer.step()
 
     MeanReward = rewardBuffer.sum()
 
-    if MeanReward > InitialMeanReward:
-        torch.save(agent.state_dict(), "HighestReward1.pth")
-        InitialMeanReward = MeanReward
+    print(f"Update {update+1}/{numEpisode} | Loss: {loss.item():.4f} | Mean Reward: {MeanReward:.2f}")
 
-    #print(f"Update {update+1}/{numEpisode} | Loss: {loss.item():.4f} | Mean Reward: {MeanReward:.2f}")
-
-torch.save(agent.state_dict(), "singleTraining.pth")
+    torch.save(agent.state_dict(), "singleTraining.pth")
 
 
 env.close()
