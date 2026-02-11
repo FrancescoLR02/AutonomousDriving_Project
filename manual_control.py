@@ -14,7 +14,7 @@ config = {
     "observation": {
         "type": "Kinematics",
         "features": ["presence", "x", "y", "vx", "vy"],
-        "normalize": False,   
+        "normalize": True,   
         "absolute": False,
     },
     "manual_control": True,
@@ -23,14 +23,6 @@ config = {
     'duration': 40,
     'lanes_count': 3,
     'initial_lane_id': None,
-    "policy_frequency": 5,
-    'collision_reward': -1,
-    'high_speed_reward': 0.8,
-    'right_lane_reward': 0,
-    'lane_change_reward': 0.05,
-    'reward_speed_range': [25, 30],
-    'vehicles_count': 10,
-    'vehicles_density': 1
 
 }
 
@@ -72,7 +64,9 @@ with open(files['Data'], 'a', newline = '') as f1, open(files['Rewards'], 'a', n
         
         #Take a step in the simulation
         obs, reward, done, truncated, info = env.step(env.action_space.sample())
-        print(info['action'], np.round(reward, 4))
+        #print(info['action'], np.round(reward, 4))
+        print('')
+        print(obs)
 
         dataWriter.writerow([info['speed'], info['action']])
 

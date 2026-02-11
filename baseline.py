@@ -17,20 +17,16 @@ class BaselineAgent:
    def __init__(self, env):
       self.env = env
 
-   def BasePolicy(self, state, th = 20, epsilon = 0.2):
+   def BasePolicy(self, state, th = 0.1, epsilon = 0.2):
 
       #Positions of all the other vehicles
       x, y = state[1:, 1], state[1:, 2]
 
       #Identify vehicles in front of ego vehicle
       xBool = (x > 0)
-      x, y = x[xBool], y[xBool]
+      forewardDistance, y = x[xBool], y[xBool]
 
-      forewardDistance = x
       closestVehicle = np.argmin(forewardDistance)
-
-      print(f"Ego Row: {state[0]}") 
-      print(f"First Other Row: {state[1]}")
 
       #If no one is close
       if forewardDistance[closestVehicle] > th:

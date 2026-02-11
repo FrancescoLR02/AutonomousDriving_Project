@@ -24,18 +24,17 @@ envName = "highway-v0"
 config = {
     "observation": {
         "type": "Kinematics",
-        "vehicles_count": 10,
-        "features": ["presence", "x", "y", "vx", "vy"],
+        "vehicles_count": 15,
+        "features": ["presence", "x", "y", "vx", "vy", "cos_h", "sin_h"],
         "normalize": True,   
         "absolute": False,
     },
     'screen_height': 300,
     'screen_width': 1200,
-    "policy_frequency": 1,
-    'duration': 60,
-    'vehicles_count': 10,
-    'vehicles_density': 1
-
+    "policy_frequency": 2,
+    'duration': 100,
+    'vehicles_count': 20,
+    'vehicles_density': 0.8
 }
 
 env = gymnasium.make(envName, config=config, render_mode='human')
@@ -45,8 +44,7 @@ if baseline:
     agent = BaselineAgent(env)
 else: 
     agent = Agent(env)
-    #checkpoint = torch.load("HighestReward.pth", map_location=torch.device('cpu'))
-    checkpoint = torch.load("singleTraining.pth", map_location=torch.device('cpu'))
+    checkpoint = torch.load("testTraining.pth", map_location=torch.device('cpu'))
     agent.load_state_dict(checkpoint)
     agent.eval()
 
@@ -63,8 +61,8 @@ fileName = {
 }
 
 files = {
-    'Data': f'{fileName[baseline]}ControlActions.csv',
-    'Rewards': f'{fileName[baseline]}ControlRewards.csv'
+    'Data': f'Data/{fileName[baseline]}ControlActions.csv',
+    'Rewards': f'Data/{fileName[baseline]}ControlRewards.csv'
 }
 rewardsHeader = ['Crashed', 'Rewards']
 actionsHeader = ['Speed', 'Action']
@@ -97,10 +95,20 @@ with open(files['Data'], 'a', newline = '') as f1, open(files['Rewards'], 'a', n
             state = torch.as_tensor(state, dtype=torch.float32).flatten().unsqueeze(0)
 
             with torch.no_grad():
+
                 hidden = agent.Network(state)
                 logits = agent.Actor(hidden)
-                print(logits)
 
+            
+                # availableActions = env.unwrapped.action_type.get_available_actions()
+                # actionsDim = env.action_space.n
+                # mask = np.zeros(actionsDim, dtype = bool)
+                # mask[availableActions] = True
+                # mask = torch.as_tensor(mask, dtype = bool)
+
+
+                # logits = logits.masked_fill(~mask, -1e8)
+                print(logits)
                 action = torch.argmax(logits).item()
                     
         #Take a step in the simulation

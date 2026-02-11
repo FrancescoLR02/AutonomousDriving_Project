@@ -40,14 +40,21 @@ class Agent(nn.Module):
       #x = x.flatten(start_dim = 1)
       return self.Critic(self.Network(x))
 
-   def GetActionValue(self, x, action = None):
+   def GetActionValue(self, x, action = None, actionMask = None):
       
       #x = x.flatten(start_dim = 1)
       hiddenLayers = self.Network(x)
+      logits = self.Actor(hiddenLayers)
+
+      #Mask not available action
+      if actionMask is not None:
+         actionMask = torch.as_tensor(actionMask, dtype = torch.bool, device = logits.device)
+         
+         #Assign low value to illegal actions
+         logits = logits.masked_fill(~actionMask, -1e8)
 
       #Output of the network are applied to softmax 
-      outputs = self.Actor(hiddenLayers)
-      outputProb = Categorical(logits = outputs)
+      outputProb = Categorical(logits = logits)
 
       #If no action is selected, draw it using outputProbs probability dist
       if action is None:
