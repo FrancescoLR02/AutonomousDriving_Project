@@ -29,15 +29,15 @@ config = {
     },
     'duration': 100,
     'lanes_count': 3,
-    "policy_frequency": 2,
+    "policy_frequency": 1,
     #The driver starts with low crash malus 
-    'collision_reward': -0.1,
-    'high_speed_reward': 0.5,
+    'collision_reward': -1,
+    'high_speed_reward': 0.8,
     'lane_change_reward': 0.5,
     'right_lane_reward': 0,
     'reward_speed_range': [20, 30],
-    'vehicles_count': 30,
-    'vehicles_density': 0.8
+    'vehicles_count': 0,
+    'vehicles_density': 0.5
 }
 
 
@@ -45,14 +45,14 @@ config = {
 env = gymnasium.make(envName, config=config, render_mode=None)
 
 #Training hyperparameters
-lr = 9e-5
+lr = 3e-4
 gamma = 0.99
 gaeLambda = 0.95
 clipCoeff = 0.2
 
-MAX_STEPS = int(5e5) 
+MAX_STEPS = int(1e6) 
 numSteps = 1500
-batchSize = 500
+batchSize = 64
 
 
 agent = Agent(env).to(device)
@@ -104,21 +104,14 @@ for update in range(numEpisode):
         with torch.no_grad():
             action, logProb, _, value = agent.GetActionValue(state.unsqueeze(0), actionMask = mask.unsqueeze(0))
 
-            #Force exploration: choose a random action casually
-            if update < numEpisode // 3 and random.random() < 0.15:
-                randomAction = np.random.choice(availableActions)
-                action = torch.tensor(randomAction).to(device)
-
         nextState, reward, terminated, truncated, info = env.step(action.item())
+
 
         #Debug informations
         if terminated:
             crash += 1
         speed.append(info['speed'])
 
-        #Malus if the driver always choose IDLE action:
-        if action.item() == 1 and speed[-1] < 25:
-            reward -= 0.5
 
         rewardBuffer[i] = reward
         done = terminated or truncated
@@ -134,9 +127,11 @@ for update in range(numEpisode):
         #Update state
         state = torch.as_tensor(nextState, dtype=torch.float32, device=device).flatten()
 
-    #When the training is a quarter through increase collision malus
-    if update == numEpisode//4:
-        env.unwrapped.config['collision_reward'] = -3
+    if (update + 1) % 40 == 0:
+        env.unwrapped.config['vehicles_count'] += 2
+        print(f'Number of cars increased to: {env.unwrapped.config['vehicles_count']}')
+    if update > 400:
+        env.unwrapped.config['vehicles_count'] = env.unwrapped.config['vehicles_count']
 
 
     #Compute the advantage
@@ -176,7 +171,7 @@ for update in range(numEpisode):
     batchMask = maskBuffer.reshape((-1, env.action_space.n))
 
     #Use 3 times the batch to learn
-    for epoch in range(3):
+    for epoch in range(6):
 
         idxs = np.arange(numSteps)
         np.random.shuffle(idxs)
@@ -207,7 +202,7 @@ for update in range(numEpisode):
             vLoss = 1/2 * ((newValue.view(-1) - batchReturns[idx]) ** 2).mean()
 
             #Total loss
-            loss = policyLoss - 0.03*entropy.mean() + 0.5*vLoss
+            loss = policyLoss - 0.01*entropy.mean() + 0.5*vLoss
 
             #Backpropagation
             optimizer.zero_grad()
