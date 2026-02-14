@@ -5,7 +5,7 @@ import torch
 import random
 from tqdm import tqdm
 
-from Agent import *
+from PPO.Agent import *
 
 np.set_printoptions(linewidth=200, suppress=True, precision=5)
 

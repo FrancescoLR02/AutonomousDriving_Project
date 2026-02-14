@@ -32,14 +32,13 @@ config = {
     "policy_frequency": 1,
     #The driver starts with low crash malus 
     'collision_reward': -1,
-    'high_speed_reward': 0.8,
+    'high_speed_reward': 0.7,
     'lane_change_reward': 0.5,
     'right_lane_reward': 0,
     'reward_speed_range': [20, 30],
     'vehicles_count': 0,
     'vehicles_density': 0.5
 }
-
 
 
 env = gymnasium.make(envName, config=config, render_mode=None)
