@@ -18,7 +18,11 @@ import UtilFunctions
 
 np.set_printoptions(linewidth=300, suppress=True, precision=5)
 
-device = torch.device('cpu')
+device = torch.device(
+    "cuda" if torch.cuda.is_available() else
+    "mps" if torch.backends.mps.is_available() else
+    "cpu"
+)
 
 # Set the seed and create the environment
 np.random.seed(0)
@@ -37,7 +41,7 @@ config = {
     },
     'duration': 80,
     'lanes_count': 3,
-    "policy_frequency": 1,
+    "policy_frequency": 2,
 }
 
 env = gymnasium.make(envName, config=config, render_mode=None)
@@ -52,7 +56,7 @@ epsDecay = 2500
 tau = 0.005
 
 batchSize = 64
-numEpisodes = 100
+numEpisodes = 500
 
 
 #initialize the environment
@@ -73,12 +77,18 @@ memory = ReplayBuffer.ReplayMemory(capacity=10_000)
 steps = 0
 
 
+episodeRewards = []
+losses = []
+
 #Training:
 
-for update in tqdm.tqdm(range(numEpisodes)):
+for update in range(numEpisodes):
 
     state, info = env.reset()
     state = torch.tensor(state, dtype = torch.float32, device = device).unsqueeze(0)
+
+    totalReward = 0
+    episodeLosses = []
 
     for t in count():
         action = UtilFunctions.GetAction(env, state, policyNet, device, steps)
@@ -86,7 +96,9 @@ for update in tqdm.tqdm(range(numEpisodes)):
 
         obs, reward, terminated, truncated, _ = env.step(action.item())
 
-        reward = torch.tensor([reward], device = device)
+        totalReward += reward
+
+        reward = torch.tensor([reward], device = device, dtype = torch.float32)
         done = terminated or truncated
 
         #If the episode terminated end, otherwise define next state
@@ -102,7 +114,10 @@ for update in tqdm.tqdm(range(numEpisodes)):
         state = nextState
 
         #Perform one step in optimization
-        UtilFunctions.Optimizer(memory, policyNet, targetNet, optimizer, device)
+        lossValue = UtilFunctions.Optimizer(memory, policyNet, targetNet, optimizer, device)
+
+        if lossValue is not None:
+            episodeLosses.append(lossValue)
 
         #Update network weights:
         targetNet_stateDict = targetNet.state_dict()
@@ -114,10 +129,18 @@ for update in tqdm.tqdm(range(numEpisodes)):
         targetNet.load_state_dict(targetNet_stateDict)
 
         if done:
+            episodeRewards.append(totalReward)
+            if len(episodeLosses) > 0:
+                losses.append(np.mean(episodeLosses))
             break
 
     if update % 10 == 0:
-        torch.save(policyNet.state_dict(), "../DQN_policyNet.pth")
+        torch.save(policyNet.state_dict(), "DQN_policyNet.pth")
+    
+    if update % 10 == 0 and len(episodeRewards) > 0:
+        avgRev = np.mean(episodeRewards[-10:])
+        avgLoss = np.mean(losses[-10:]) if len(losses) > 0 else 0
+        print(f" Episode {update} | Avg Reward: {avgRev:.2f} | Avg Loss: {avgLoss:.4f} | Eps: {epsEnd + (epsStart - epsEnd) * np.exp(-1 * steps/epsDecay):.2f}")
 
 
         

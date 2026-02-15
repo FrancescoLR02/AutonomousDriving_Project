@@ -89,19 +89,9 @@ for update in range(numEpisode):
     #Replay buffer: stores numSteps 
     for i in range(numSteps):
 
-        #Create a mask for not available actions
-        availableActions = env.unwrapped.action_type.get_available_actions()
-        actionsDim = env.action_space.n
-        mask = np.zeros(actionsDim, dtype = bool)
-        mask[availableActions] = True
-        mask = torch.as_tensor(mask, dtype = bool, device = device)
-
-        maskBuffer[i] = mask
-
-
         #Draw an action from the actor
         with torch.no_grad():
-            action, logProb, _, value = agent.GetActionValue(state.unsqueeze(0), actionMask = mask.unsqueeze(0))
+            action, logProb, _, value = agent.GetActionValue(state.unsqueeze(0))
 
         nextState, reward, terminated, truncated, info = env.step(action.item())
 

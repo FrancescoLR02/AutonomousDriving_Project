@@ -13,8 +13,8 @@ class DQN(nn.Module):
       super().__init__()
 
       self.layer1 = nn.Linear(stateShape, 128)
-      self.layer2 = nn.Linear(128, 128)
-      self.layer3 = nn.Linear(128, nActions)
+      self.layer2 = nn.Linear(128, 256)
+      self.layer3 = nn.Linear(256, nActions)
 
    def forward(self, x):
       x = x.view(x.size(0), -1)

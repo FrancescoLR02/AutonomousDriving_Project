@@ -66,3 +66,5 @@ def Optimizer(memory, policyNet, targetNet, optimizer, device):
    loss.backward()
    torch.nn.utils.clip_grad_value_(policyNet.parameters(), 100)
    optimizer.step()
+
+   return loss.item()

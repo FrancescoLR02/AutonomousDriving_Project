@@ -5,12 +5,6 @@ import torch.optim as optim
 from torch.distributions.categorical import Categorical
 
 
-def LayerInit(layer, std=np.sqrt(2), bias_const=0.0):
-   torch.nn.init.orthogonal_(layer.weight, std)
-   torch.nn.init.constant_(layer.bias, bias_const)
-   return layer
-
-
 class Agent(nn.Module):
 
    def __init__(self, env):
@@ -26,32 +20,23 @@ class Agent(nn.Module):
 
 
       self.Network = nn.Sequential(
-         LayerInit(nn.Linear(self.inputDim, 256), std = np.sqrt(2)),
+         nn.Linear(self.inputDim, 256),
          nn.ReLU(),
-         LayerInit(nn.Linear(256, 128), std = np.sqrt(2)),
+         nn.Linear(256, 128),
          nn.ReLU()
       )
 
-      self.Actor = LayerInit(nn.Linear(128, self.outputDim), std=0.1)
-      self.Critic = LayerInit(nn.Linear(128, 1), std = 1)
+      self.Actor = nn.Linear(128, self.outputDim)
+      self.Critic = nn.Linear(128, 1)
 
    #Critics prediction
    def GetValue(self, x):
-      #x = x.flatten(start_dim = 1)
       return self.Critic(self.Network(x))
 
-   def GetActionValue(self, x, action = None, actionMask = None):
+   def GetActionValue(self, x, action = None):
       
-      #x = x.flatten(start_dim = 1)
       hiddenLayers = self.Network(x)
       logits = self.Actor(hiddenLayers)
-
-      #Mask not available action
-      if actionMask is not None:
-         actionMask = torch.as_tensor(actionMask, dtype = torch.bool, device = logits.device)
-         
-         #Assign low value to illegal actions
-         logits = logits.masked_fill(~actionMask, -1e8)
 
       #Output of the network are applied to softmax 
       outputProb = Categorical(logits = logits)

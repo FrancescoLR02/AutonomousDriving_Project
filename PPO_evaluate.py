@@ -7,7 +7,7 @@ import os
 import csv
 
 from baseline import BaselineAgent
-from Agent import *
+from PPO.Agent import *
 
 np.set_printoptions(linewidth=200, suppress=True, precision=5)
 
@@ -33,8 +33,8 @@ config = {
     'screen_width': 1200,
     "policy_frequency": 1,
     'duration': 100,
-    'vehicles_count': 16,
-    'vehicles_density': 0.8
+    'vehicles_count': 50,
+    'vehicles_density': 2
 }
 
 env = gymnasium.make(envName, config=config, render_mode='human')
@@ -93,6 +93,8 @@ with open(files['Data'], 'a', newline = '') as f1, open(files['Rewards'], 'a', n
         if baseline: action = agent.BasePolicy(state)
         else: 
             state = torch.as_tensor(state, dtype=torch.float32).flatten().unsqueeze(0)
+
+            
 
             with torch.no_grad():
 
