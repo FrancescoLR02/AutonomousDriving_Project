@@ -4,6 +4,7 @@ import highway_env
 from itertools import count
 import random
 import tqdm as tqdm
+import csv
 
 
 
@@ -35,7 +36,7 @@ config = {
     "observation": {
         "type": "Kinematics",
         "vehicles_count": 10,
-        "features": ["presence", "x", "y", "vx", "vy"],
+        "features": ["presence", "x", "y", "vx", "vy", 'cos_h', 'sin_h'],
         "normalize": True,   
         "absolute": False,
     },
@@ -48,15 +49,15 @@ env = gymnasium.make(envName, config=config, render_mode=None)
 
 
 #Hyperparameters
-lr = 3e-4
+lr = 1e-4
 gamma = 0.99
 epsStart = 0.9
 epsEnd = 0.01
-epsDecay = 2500
-tau = 0.005
+epsDecay = 20000
+tau = 0.001
 
-batchSize = 64
-numEpisodes = 500
+batchSize = 128
+numEpisodes = 5000
 
 
 #initialize the environment
@@ -71,7 +72,7 @@ targetNet = modelDQN.DQN(stateShape, nActions).to(device)
 
 targetNet.load_state_dict(policyNet.state_dict())
 
-optimizer = optim.Adam(policyNet.parameters(), lr = lr)
+optimizer = optim.Adam(policyNet.parameters(), lr = lr, amsgrad=True)
 memory = ReplayBuffer.ReplayMemory(capacity=10_000)
 
 steps = 0
@@ -82,65 +83,70 @@ losses = []
 
 #Training:
 
-for update in range(numEpisodes):
-
-    state, info = env.reset()
-    state = torch.tensor(state, dtype = torch.float32, device = device).unsqueeze(0)
-
-    totalReward = 0
-    episodeLosses = []
-
-    for t in count():
-        action = UtilFunctions.GetAction(env, state, policyNet, device, steps)
-        steps += 1
-
-        obs, reward, terminated, truncated, _ = env.step(action.item())
-
-        totalReward += reward
-
-        reward = torch.tensor([reward], device = device, dtype = torch.float32)
-        done = terminated or truncated
-
-        #If the episode terminated end, otherwise define next state
-        if terminated:
-            nextState = None
-        else:
-            nextState = torch.tensor(obs, dtype = torch.float32, device = device).unsqueeze(0)
-
-        #Save the transition
-        memory.Push(state, action, nextState, reward)
-        
-        #Update state
-        state = nextState
-
-        #Perform one step in optimization
-        lossValue = UtilFunctions.Optimizer(memory, policyNet, targetNet, optimizer, device)
-
-        if lossValue is not None:
-            episodeLosses.append(lossValue)
-
-        #Update network weights:
-        targetNet_stateDict = targetNet.state_dict()
-        policyNet_stateDict = policyNet.state_dict()
-
-        for k in policyNet_stateDict:
-            targetNet_stateDict[k] = policyNet_stateDict[k]*tau + targetNet_stateDict[k]*(1-tau)
-        
-        targetNet.load_state_dict(targetNet_stateDict)
-
-        if done:
-            episodeRewards.append(totalReward)
-            if len(episodeLosses) > 0:
-                losses.append(np.mean(episodeLosses))
-            break
-
-    if update % 10 == 0:
-        torch.save(policyNet.state_dict(), "DQN_policyNet.pth")
+with open('DQN/TrainingData.csv', 'w', newline = '') as f1:
+    Data = csv.writer(f1)
+    Data.writerow(['Episode', 'Avg Reward', 'Avg Loss'])
     
-    if update % 10 == 0 and len(episodeRewards) > 0:
-        avgRev = np.mean(episodeRewards[-10:])
-        avgLoss = np.mean(losses[-10:]) if len(losses) > 0 else 0
-        print(f" Episode {update} | Avg Reward: {avgRev:.2f} | Avg Loss: {avgLoss:.4f} | Eps: {epsEnd + (epsStart - epsEnd) * np.exp(-1 * steps/epsDecay):.2f}")
+    for update in range(numEpisodes):
 
+        state, info = env.reset()
+        state = torch.tensor(state, dtype = torch.float32, device = device).unsqueeze(0)
 
+        totalReward = 0
+        episodeLosses = []
+
+        for t in count():
+            action = UtilFunctions.GetAction(env, state, policyNet, device, steps)
+            steps += 1
+
+            obs, reward, terminated, truncated, _ = env.step(action.item())
+
+            totalReward += reward
+
+            reward = torch.tensor([reward], device = device, dtype = torch.float32)
+            done = terminated or truncated
+
+            #If the episode terminated end, otherwise define next state
+            if terminated:
+                nextState = None
+            else:
+                nextState = torch.tensor(obs, dtype = torch.float32, device = device).unsqueeze(0)
+
+            #Save the transition
+            memory.Push(state, action, nextState, reward)
+            
+            #Update state
+            state = nextState
+
+            #Perform one step in optimization
+            lossValue = UtilFunctions.Optimizer(memory, policyNet, targetNet, optimizer, device)
+
+            if lossValue is not None:
+                episodeLosses.append(lossValue)
+
+            #Update network weights:
+            targetNet_stateDict = targetNet.state_dict()
+            policyNet_stateDict = policyNet.state_dict()
+
+            for k in policyNet_stateDict:
+                targetNet_stateDict[k] = policyNet_stateDict[k]*tau + targetNet_stateDict[k]*(1-tau)
+            
+            targetNet.load_state_dict(targetNet_stateDict)
+
+            if done:
+                episodeRewards.append(totalReward)
+                if len(episodeLosses) > 0:
+                    losses.append(np.mean(episodeLosses))
+                break
+
+        if update % 10 == 0:
+            torch.save(policyNet.state_dict(), "DQN_policyNet.pth")
+        
+        if update % 10 == 0 and len(episodeRewards) > 0:
+            avgRev = np.mean(episodeRewards[-10:])
+            avgLoss = np.mean(losses[-10:]) if len(losses) > 0 else 0
+            print(f" Episode {update} | Avg Reward: {avgRev:.2f} | Avg Loss: {avgLoss:.4f} | Eps: {epsEnd + (epsStart - epsEnd) * np.exp(-1 * steps/epsDecay):.2f}")
+
+            Data.writerow([update, avgRev, avgLoss])
+            f1.flush()
         

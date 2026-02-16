@@ -17,7 +17,7 @@ np.random.seed(0)
 random.seed(0)
 #torch.Agent_seed(0)
 
-baseline = False
+baseline = True
 
 
 envName = "highway-v0"

@@ -24,16 +24,14 @@ config = {
    "observation": {
       "type": "Kinematics",
       "vehicles_count": 10,
-      "features": ["presence", "x", "y", "vx", "vy"],
+      "features": ["presence", "x", "y", "vx", "vy", 'cos_h', 'sin_h'],
       "normalize": True,   
       "absolute": False,
    },
    'screen_height': 300,
    'screen_width': 1200,
-   "policy_frequency": 5,
    'duration': 50,
-   'vehicles_count': 50,
-   'vehicles_density': 1.3
+   "policy_frequency": 2
 }
 
 env = gymnasium.make(envName, config=config, render_mode='human')
