@@ -30,7 +30,7 @@ config = {
    },
    'screen_height': 300,
    'screen_width': 1200,
-   'duration': 50,
+   'duration': 60,
    "policy_frequency": 2
 }
 
@@ -104,7 +104,6 @@ with open(files['Data'], 'a', newline = '') as f1, open(files['Rewards'], 'a', n
       state = nextState
 
       if done or truncated:
-         dataWriter.writerow(f'Episode: {episode}')
          rewardWriter.writerow([info['crashed'], epReward])
          state, _ = env.reset()
          epReward = 0

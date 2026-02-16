@@ -57,7 +57,7 @@ epsDecay = 20000
 tau = 0.001
 
 batchSize = 128
-numEpisodes = 5000
+numEpisodes = 4500
 
 
 #initialize the environment
@@ -83,7 +83,7 @@ losses = []
 
 #Training:
 
-with open('DQN/TrainingData.csv', 'w', newline = '') as f1:
+with open('DQN/DDQNTrainingData.csv', 'w', newline = '') as f1:
     Data = csv.writer(f1)
     Data.writerow(['Episode', 'Avg Reward', 'Avg Loss'])
     
@@ -140,7 +140,7 @@ with open('DQN/TrainingData.csv', 'w', newline = '') as f1:
                 break
 
         if update % 10 == 0:
-            torch.save(policyNet.state_dict(), "DQN_policyNet.pth")
+            torch.save(policyNet.state_dict(), "DDQN_policyNet.pth")
         
         if update % 10 == 0 and len(episodeRewards) > 0:
             avgRev = np.mean(episodeRewards[-10:])

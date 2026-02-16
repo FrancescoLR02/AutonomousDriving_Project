@@ -52,7 +52,10 @@ def Optimizer(memory, policyNet, targetNet, optimizer, device):
    #Compute the value function at next state
    stateValueNext = torch.zeros(batchSize, device = device)
    with torch.no_grad():
-      stateValueNext[nonFinal_mask] = targetNet(nonFinal_nextStates).max(1).values
+
+      #DDQN 
+      bestNextActions = policyNet(nonFinal_nextStates).max(1).indices.unsqueeze(1)
+      stateValueNext[nonFinal_mask] = targetNet(nonFinal_nextStates).gather(1, bestNextActions).squeeze(1)
 
    #Expected Q value
    expStateActionValue = (stateValueNext * gamma) + rewardBatch

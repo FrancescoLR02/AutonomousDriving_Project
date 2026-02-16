@@ -20,9 +20,9 @@ config = {
     "manual_control": True,
     'screen_height': 300,
     'screen_width': 1200,
-    'duration': 40,
-    'lanes_count': 3,
-    'initial_lane_id': None,
+    'duration': 60,
+    "policy_frequency": 2
+
 
 }
 
@@ -36,8 +36,8 @@ epSteps = 0
 epReturn = 0
 
 files = {
-    'Data': 'ManualControlActions.csv',
-    'Rewards': 'ManualControlRewards.csv'
+    'Data': 'Data/ManualControlActions.csv',
+    'Rewards': 'Data/ManualControlRewards.csv'
 }
 rewardsHeader = ['Crashed', 'Rewards']
 actionsHeader = ['Speed', 'Action']
@@ -65,9 +65,6 @@ with open(files['Data'], 'a', newline = '') as f1, open(files['Rewards'], 'a', n
         #Take a step in the simulation
         obs, reward, done, truncated, info = env.step(env.action_space.sample())
         #print(info['action'], np.round(reward, 4))
-        print('')
-        print(obs)
-
         dataWriter.writerow([info['speed'], info['action']])
 
         env.render()
@@ -77,8 +74,8 @@ with open(files['Data'], 'a', newline = '') as f1, open(files['Rewards'], 'a', n
 
         if done or truncated:
             rewardWriter.writerow([info['crashed'], epReward])
+            epReward = 0
             state, _ = env.reset()
-            run = False
 
 
 env.close()

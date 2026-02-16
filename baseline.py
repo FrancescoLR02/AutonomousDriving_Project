@@ -57,6 +57,10 @@ class BaselineAgent:
                   return self.env.unwrapped.action_type.actions_indexes["LANE_LEFT"]
                else: return self.env.unwrapped.action_type.actions_indexes["LANE_RIGHT"]
 
+         else:
+            return self.env.unwrapped.action_type.actions_indexes["IDLE"]
+
+
 
    def RandomPolicy(self):
 

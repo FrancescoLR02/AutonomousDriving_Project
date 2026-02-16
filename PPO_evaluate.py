@@ -19,22 +19,22 @@ random.seed(0)
 
 baseline = True
 
+pid = os.getpid()
+
 
 envName = "highway-v0"
 config = {
     "observation": {
         "type": "Kinematics",
         "vehicles_count": 10,
-        "features": ["presence", "x", "y", "vx", "vy"],
+        "features": ["presence", "x", "y", "vx", "vy", 'cos_h', 'sin_h'],
         "normalize": True,   
         "absolute": False,
     },
     'screen_height': 300,
     'screen_width': 1200,
-    "policy_frequency": 1,
-    'duration': 100,
-    'vehicles_count': 50,
-    'vehicles_density': 2
+    "policy_frequency": 2,
+    'duration': 80,
 }
 
 env = gymnasium.make(envName, config=config, render_mode='human')
@@ -61,10 +61,10 @@ fileName = {
 }
 
 files = {
-    'Data': f'Data/{fileName[baseline]}ControlActions.csv',
-    'Rewards': f'Data/{fileName[baseline]}ControlRewards.csv'
+    'Data': f'Data/{fileName[baseline]}ControlActions_{pid}.csv',
+    'Rewards': f'Data/{fileName[baseline]}ControlRewards_{pid}.csv'
 }
-rewardsHeader = ['Crashed', 'Rewards']
+rewardsHeader = ['Crashed', 'Rewards', 'AvgSpeed', 'StdSpeed']
 actionsHeader = ['Speed', 'Action']
 
 needsHeader = {key: not os.path.isfile(path) for key, path in files.items()}
@@ -73,12 +73,12 @@ needsHeader = {key: not os.path.isfile(path) for key, path in files.items()}
 #Write on file the inforations
 with open(files['Data'], 'a', newline = '') as f1, open(files['Rewards'], 'a', newline = '') as f2:
 
-    dataWriter = csv.writer(f1)
+    #dataWriter = csv.writer(f1)
     rewardWriter = csv.writer(f2)
 
     #Define the headers of the csv files
-    if needsHeader['Data']:
-        dataWriter.writerow(actionsHeader)
+    # if needsHeader['Data']:
+    #     dataWriter.writerow(actionsHeader)
     
     if needsHeader['Rewards']:
         rewardWriter.writerow(rewardsHeader)
@@ -87,6 +87,8 @@ with open(files['Data'], 'a', newline = '') as f1, open(files['Rewards'], 'a', n
     epReward = 0
     episode = 0
 
+    avgSpeed = []
+
     while True:
         episode += 1
 
@@ -94,29 +96,17 @@ with open(files['Data'], 'a', newline = '') as f1, open(files['Rewards'], 'a', n
         else: 
             state = torch.as_tensor(state, dtype=torch.float32).flatten().unsqueeze(0)
 
-            
-
             with torch.no_grad():
 
                 hidden = agent.Network(state)
                 logits = agent.Actor(hidden)
-
-            
-                availableActions = env.unwrapped.action_type.get_available_actions()
-                actionsDim = env.action_space.n
-                mask = np.zeros(actionsDim, dtype = bool)
-                mask[availableActions] = True
-                mask = torch.as_tensor(mask, dtype = bool)
-
-
-                # logits = logits.masked_fill(~mask, -1e8)
-                print(logits)
                 action = torch.argmax(logits).item()
                     
         #Take a step in the simulation
         nextState, reward, done, truncated, info = env.step(action)
 
-        dataWriter.writerow([info['speed'], info['action']])
+        #dataWriter.writerow([info['speed'], info['action']])
+        avgSpeed.append(info['speed'])
 
         env.render()
 
@@ -127,10 +117,12 @@ with open(files['Data'], 'a', newline = '') as f1, open(files['Rewards'], 'a', n
         state = nextState
 
         if done or truncated:
-            dataWriter.writerow(f'Episode: {episode}')
-            rewardWriter.writerow([info['crashed'], epReward])
+            rewardWriter.writerow([info['crashed'], epReward, np.mean(avgSpeed), np.std(avgSpeed)])
             state, _ = env.reset()
+            avgSpeed = []
             epReward = 0
+            #f1.flush()
+            f2.flush()
 
 
 env.close()
