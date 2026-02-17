@@ -9,7 +9,7 @@ epsStart = 0.9
 epsEnd = 0.01
 epsDecay = 2500
 gamma = 0.99
-batchSize = 128
+batchSize = 64
 
 def GetAction(env, state, policyNet, device, steps):
 

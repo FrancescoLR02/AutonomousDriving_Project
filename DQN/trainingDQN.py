@@ -52,19 +52,11 @@ env = gymnasium.make(envName, config=config, render_mode=None)
 lr = 1e-4
 gamma = 0.99
 epsStart = 0.9
-epsEnd = 0.01
-epsDecay = 20
-
-
-
-
-
-
-
-000
+epsEnd = 0.005
+epsDecay = 20000
 tau = 0.001
 
-batchSize = 128
+batchSize = 64
 numEpisodes = 6000
 
 
@@ -81,7 +73,7 @@ targetNet = modelDQN.DQN(stateShape, nActions).to(device)
 targetNet.load_state_dict(policyNet.state_dict())
 
 optimizer = optim.Adam(policyNet.parameters(), lr = lr, amsgrad=True)
-memory = ReplayBuffer.ReplayMemory(capacity=50_000)
+memory = ReplayBuffer.ReplayMemory(capacity=20_000)
 
 steps = 0
 

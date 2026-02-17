@@ -30,7 +30,7 @@ config = {
    },
    'screen_height': 300,
    'screen_width': 1200,
-   'duration': 60,
+   'duration': 80,
    "policy_frequency": 2
 }
 

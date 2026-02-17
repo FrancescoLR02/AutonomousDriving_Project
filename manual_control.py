@@ -13,7 +13,7 @@ envName = "highway-v0"
 config = {
     "observation": {
         "type": "Kinematics",
-        "features": ["presence", "x", "y", "vx", "vy"],
+        "features": ["presence", "x", "y", "vx", "vy", 'cos_h', 'sin_h'],
         "normalize": True,   
         "absolute": False,
     },

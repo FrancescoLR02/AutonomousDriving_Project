@@ -71,7 +71,7 @@ needsHeader = {key: not os.path.isfile(path) for key, path in files.items()}
 
 
 #Write on file the inforations
-with open(files['Data'], 'a', newline = '') as f1, open(files['Rewards'], 'a', newline = '') as f2:
+with  open(files['Rewards'], 'a', newline = '') as f2: #open(files['Data'], 'a', newline = '') as f1,
 
     #dataWriter = csv.writer(f1)
     rewardWriter = csv.writer(f2)
