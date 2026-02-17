@@ -42,7 +42,7 @@ nActions = env.action_space.n
 stateShape = np.prod(env.observation_space.shape)
 
 agent = DQN(stateShape, nActions)
-checkpoint = torch.load("DQN_policyNet.pth", map_location=torch.device('cpu'))
+checkpoint = torch.load("DDQN_Champion.pth", map_location=torch.device('cpu'))
 agent.load_state_dict(checkpoint)
 agent.eval()
 

@@ -53,11 +53,19 @@ lr = 1e-4
 gamma = 0.99
 epsStart = 0.9
 epsEnd = 0.01
-epsDecay = 20000
+epsDecay = 20
+
+
+
+
+
+
+
+000
 tau = 0.001
 
 batchSize = 128
-numEpisodes = 4500
+numEpisodes = 6000
 
 
 #initialize the environment
@@ -73,7 +81,7 @@ targetNet = modelDQN.DQN(stateShape, nActions).to(device)
 targetNet.load_state_dict(policyNet.state_dict())
 
 optimizer = optim.Adam(policyNet.parameters(), lr = lr, amsgrad=True)
-memory = ReplayBuffer.ReplayMemory(capacity=10_000)
+memory = ReplayBuffer.ReplayMemory(capacity=50_000)
 
 steps = 0
 
@@ -139,7 +147,9 @@ with open('DQN/DDQNTrainingData.csv', 'w', newline = '') as f1:
                     losses.append(np.mean(episodeLosses))
                 break
 
-        if update % 10 == 0:
+        best_reward = -float('inf')
+
+        if update % 100 == 0:
             torch.save(policyNet.state_dict(), "DDQN_policyNet.pth")
         
         if update % 10 == 0 and len(episodeRewards) > 0:
@@ -149,4 +159,8 @@ with open('DQN/DDQNTrainingData.csv', 'w', newline = '') as f1:
 
             Data.writerow([update, avgRev, avgLoss])
             f1.flush()
+
+            if avgRev > best_reward:
+                best_reward = avgRev
+                torch.save(policyNet.state_dict(), "DDQN_Champion.pth")
         
