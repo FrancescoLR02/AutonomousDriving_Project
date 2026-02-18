@@ -18,6 +18,9 @@ np.set_printoptions(linewidth=200, suppress=True, precision=5)
 np.random.seed(0)
 random.seed(0)
 
+pid = os.getpid()
+
+
 
 envName = "highway-v0"
 config = {
@@ -42,7 +45,7 @@ nActions = env.action_space.n
 stateShape = np.prod(env.observation_space.shape)
 
 agent = DQN(stateShape, nActions)
-checkpoint = torch.load("DDQN_Champion.pth", map_location=torch.device('cpu'))
+checkpoint = torch.load("DDQN_policyNet1.pth", map_location=torch.device('cpu'))
 agent.load_state_dict(checkpoint)
 agent.eval()
 
@@ -54,24 +57,24 @@ done, truncated = False, False
 fileName = 'DQN_agent'
 
 files = {
-   'Data': f'Data/{fileName}ControlActions.csv',
-   'Rewards': f'Data/{fileName}ControlRewards.csv'
+   'Data': f'Data/{fileName}ControlActions_{pid}.csv',
+   'Rewards': f'Data/{fileName}ControlRewards_{pid}.csv'
 }
-rewardsHeader = ['Crashed', 'Rewards']
+rewardsHeader = ['Crashed', 'Rewards', 'AvgSpeed', 'StdSpeed']
 actionsHeader = ['Speed', 'Action']
 
 needsHeader = {key: not os.path.isfile(path) for key, path in files.items()}
 
 
 #Write on file the inforations
-with open(files['Data'], 'a', newline = '') as f1, open(files['Rewards'], 'a', newline = '') as f2:
+with open(files['Rewards'], 'a', newline = '') as f2: #open(files['Data'], 'a', newline = '') as f1
 
-   dataWriter = csv.writer(f1)
+   #dataWriter = csv.writer(f1)
    rewardWriter = csv.writer(f2)
 
    #Define the headers of the csv files
-   if needsHeader['Data']:
-      dataWriter.writerow(actionsHeader)
+   # if needsHeader['Data']:
+   #    dataWriter.writerow(actionsHeader)
    
    if needsHeader['Rewards']:
       rewardWriter.writerow(rewardsHeader)
@@ -79,6 +82,8 @@ with open(files['Data'], 'a', newline = '') as f1, open(files['Rewards'], 'a', n
 
    epReward = 0
    episode = 0
+
+   avgSpeed = []
 
    while True:
       episode += 1
@@ -92,8 +97,9 @@ with open(files['Data'], 'a', newline = '') as f1, open(files['Rewards'], 'a', n
                   
       #Take a step in the simulation
       nextState, reward, done, truncated, info = env.step(action)
+      avgSpeed.append(info['speed'])
 
-      dataWriter.writerow([info['speed'], info['action']])
+      #dataWriter.writerow([info['speed'], info['action']])
 
       env.render()
 
@@ -104,9 +110,11 @@ with open(files['Data'], 'a', newline = '') as f1, open(files['Rewards'], 'a', n
       state = nextState
 
       if done or truncated:
-         rewardWriter.writerow([info['crashed'], epReward])
+         rewardWriter.writerow([info['crashed'], epReward, np.mean(avgSpeed), np.std(avgSpeed)])
          state, _ = env.reset()
          epReward = 0
+         avgSpeed = []
+         f2.flush()
 
 
 env.close()

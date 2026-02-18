@@ -20,14 +20,14 @@ class Agent(nn.Module):
 
 
       self.Network = nn.Sequential(
-         nn.Linear(self.inputDim, 256),
+         nn.Linear(self.inputDim, 128),
          nn.ReLU(),
-         nn.Linear(256, 128),
+         nn.Linear(128, 256),
          nn.ReLU()
       )
 
-      self.Actor = nn.Linear(128, self.outputDim)
-      self.Critic = nn.Linear(128, 1)
+      self.Actor = nn.Linear(256, self.outputDim)
+      self.Critic = nn.Linear(256, 1)
 
    #Critics prediction
    def GetValue(self, x):

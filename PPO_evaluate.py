@@ -37,7 +37,7 @@ config = {
     'duration': 80,
 }
 
-env = gymnasium.make(envName, config=config, render_mode='human')
+env = gymnasium.make(envName, config=config, render_mode=None)
 
 # Initialize your model and load parameters
 if baseline: 
@@ -108,7 +108,7 @@ with  open(files['Rewards'], 'a', newline = '') as f2: #open(files['Data'], 'a',
         #dataWriter.writerow([info['speed'], info['action']])
         avgSpeed.append(info['speed'])
 
-        env.render()
+        #env.render()
 
         #Compute final reward
         epReward += reward

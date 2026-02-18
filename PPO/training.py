@@ -5,6 +5,7 @@ import torch
 import random
 from tqdm import tqdm
 import matplotlib.pyplot as plt
+import csv
 
 from Agent import *
 
@@ -18,7 +19,7 @@ np.random.seed(0)
 random.seed(0)
 torch.manual_seed(0)
 
-envName = "highway-v0"
+envName = "highway-fast-v0"
 config = {
     "observation": {
         "type": "Kinematics",
@@ -27,31 +28,25 @@ config = {
         "normalize": True,   
         "absolute": False,
     },
-    'duration': 100,
+    'duration': 80,
     'lanes_count': 3,
-    "policy_frequency": 1,
-    #The driver starts with low crash malus 
-    'collision_reward': -1,
-    'high_speed_reward': 0.7,
-    'lane_change_reward': 0.5,
+    "policy_frequency": 2,
     'right_lane_reward': 0,
-    'reward_speed_range': [20, 30],
-    'vehicles_count': 0,
-    'vehicles_density': 0.5
+    'high_speed_reward': 0.6,
 }
 
 
 env = gymnasium.make(envName, config=config, render_mode=None)
 
 #Training hyperparameters
-lr = 3e-4
+lr = 1e-4
 gamma = 0.99
 gaeLambda = 0.95
 clipCoeff = 0.2
 
 MAX_STEPS = int(1e6) 
 numSteps = 1500
-batchSize = 64
+batchSize = 128
 
 
 agent = Agent(env).to(device)
@@ -81,127 +76,133 @@ numEpisode = MAX_STEPS // numSteps
 
 debug = True
 
-InitialMeanReward = 0
-for update in range(numEpisode):
-    crash = 0
-    speed = []
+successRate = []
+best_reward = -float('inf')
 
-    #Replay buffer: stores numSteps 
-    for i in range(numSteps):
+#write rewards on file
+with open('PPO/PPOrainingData.csv', 'w', newline = '') as f1:
+    Data = csv.writer(f1)
+    Data.writerow(['Episode', 'Avg Reward', 'SuccessRate'])
 
-        #Draw an action from the actor
+    currentEpReward = 0
+    for update in range(numEpisode):
+        crash = 0
+        speed = []
+        completedEpRewards = []
+
+        #Replay buffer: stores numSteps 
+        for i in range(numSteps):
+
+            #Draw an action from the actor
+            with torch.no_grad():
+                action, logProb, _, value = agent.GetActionValue(state.unsqueeze(0))
+
+            nextState, reward, terminated, truncated, info = env.step(action.item())
+
+            currentEpReward += reward
+
+
+            #Debug informations
+            if terminated:
+                crash += 1
+            speed.append(info['speed'])
+
+
+            rewardBuffer[i] = reward
+            done = terminated or truncated
+            stateBuffer[i] = state
+            actionBuffer[i] = action
+            logProbBuffer[i] = logProb
+            doneBuffer[i] = done
+            valuesBuffer[i] = value        
+            
+            if done:
+                completedEpRewards.append(currentEpReward)
+                successRate.append(not(info['crashed']))
+                currentEpReward = 0
+                nextState, _ = env.reset()
+
+            #Update state
+            state = torch.as_tensor(nextState, dtype=torch.float32, device=device).flatten()
+
+
+        #Compute the advantage
         with torch.no_grad():
-            action, logProb, _, value = agent.GetActionValue(state.unsqueeze(0))
+            _, _, _, nextValue = agent.GetActionValue(state.unsqueeze(0))
+            nextValue = nextValue.item()
 
-        nextState, reward, terminated, truncated, info = env.step(action.item())
+        #Advantage array
+        advantage = torch.zeros_like(rewardBuffer).to(device)
+        lastGAElam = 0
+
+        for t in reversed(range(numSteps)):
+            if t == numSteps - 1:
+
+                #Either 0 or 1 depending whather the episode is done or not
+                nextNonTerminal = 1 - done
+                nextValues = nextValue
+
+            else:
+                nextNonTerminal = 1 - doneBuffer[t].item()
+                nextValues = valuesBuffer[t + 1]
+
+            #COmpute the target and advantage array 
+            targetTD = rewardBuffer[t] + gamma * nextValues * nextNonTerminal - valuesBuffer[t]
+            advantage[t] = lastGAElam = targetTD + gamma * gaeLambda * nextNonTerminal * lastGAElam
+
+        returns = advantage + valuesBuffer
+        advantage = (advantage - advantage.mean()) / (advantage.std() + 1e-10)
+
+        #Training on the batch of observations
+        batchState = stateBuffer.reshape((-1, stateShape))
+        batchLogProb = logProbBuffer.reshape(-1)
+        batchActions = actionBuffer.reshape(-1)
+        batchAdvantages = advantage.reshape(-1)
+        batchReturns = returns.reshape(-1)
+        batchValues = valuesBuffer.reshape(-1)
+        batchMask = maskBuffer.reshape((-1, env.action_space.n))
+
+        #Use 3 times the batch to learn
+        for epoch in range(6):
+
+            idxs = np.arange(numSteps)
+            np.random.shuffle(idxs)
+
+            for start in range(0, numSteps, batchSize):
+                
+                #Select the batch indexes data
+                end = start + batchSize
+                idx = idxs[start : end]
+
+                #Evaluate the batch of paris state-action
+                _, newLogProb, entropy, newValue = agent.GetActionValue(batchState[idx], batchActions[idx])
+
+                #Compute log ratio:
+                logRatio = newLogProb - batchLogProb[idx]
+                ratio = logRatio.exp()
+
+                #Policy loss normalized
+                mbAdvantage = batchAdvantages[idx]
+
+                policyLoss1 = -mbAdvantage * ratio
+                policyLoss2 = -mbAdvantage * torch.clamp(ratio, 1 - clipCoeff, 1 + clipCoeff)
+                
+                #Expectation value of PPO objective
+                policyLoss = torch.max(policyLoss1, policyLoss2).mean()
+
+                #value Loss 
+                vLoss = 1/2 * ((newValue.view(-1) - batchReturns[idx]) ** 2).mean()
+
+                #Total loss
+                loss = policyLoss - 0.01*entropy.mean() + 0.5*vLoss
+
+                #Backpropagation
+                optimizer.zero_grad()
+                loss.backward()
+                torch.nn.utils.clip_grad_norm_(agent.parameters(), max_norm=0.5)
+                optimizer.step()
 
 
-        #Debug informations
-        if terminated:
-            crash += 1
-        speed.append(info['speed'])
-
-
-        rewardBuffer[i] = reward
-        done = terminated or truncated
-        stateBuffer[i] = state
-        actionBuffer[i] = action
-        logProbBuffer[i] = logProb
-        doneBuffer[i] = done
-        valuesBuffer[i] = value        
-        
-        if done:
-            nextState, _ = env.reset()
-
-        #Update state
-        state = torch.as_tensor(nextState, dtype=torch.float32, device=device).flatten()
-
-    if (update + 1) % 40 == 0:
-        env.unwrapped.config['vehicles_count'] += 2
-        print(f'Number of cars increased to: {env.unwrapped.config['vehicles_count']}')
-    if update > 400:
-        env.unwrapped.config['vehicles_count'] = env.unwrapped.config['vehicles_count']
-
-
-    #Compute the advantage
-    with torch.no_grad():
-        _, _, _, nextValue = agent.GetActionValue(state.unsqueeze(0))
-        nextValue = nextValue.item()
-
-    #Advantage array
-    advantage = torch.zeros_like(rewardBuffer).to(device)
-    lastGAElam = 0
-
-    for t in reversed(range(numSteps)):
-        if t == numSteps - 1:
-
-            #Either 0 or 1 depending whather the episode is done or not
-            nextNonTerminal = 1 - done
-            nextValues = nextValue
-
-        else:
-            nextNonTerminal = 1 - doneBuffer[t].item()
-            nextValues = valuesBuffer[t + 1]
-
-        #COmpute the target and advantage array 
-        targetTD = rewardBuffer[t] + gamma * nextValues * nextNonTerminal - valuesBuffer[t]
-        advantage[t] = lastGAElam = targetTD + gamma * gaeLambda * nextNonTerminal * lastGAElam
-
-    returns = advantage + valuesBuffer
-    advantage = (advantage - advantage.mean()) / (advantage.std() + 1e-10)
-
-    #Training on the batch of observations
-    batchState = stateBuffer.reshape((-1, stateShape))
-    batchLogProb = logProbBuffer.reshape(-1)
-    batchActions = actionBuffer.reshape(-1)
-    batchAdvantages = advantage.reshape(-1)
-    batchReturns = returns.reshape(-1)
-    batchValues = valuesBuffer.reshape(-1)
-    batchMask = maskBuffer.reshape((-1, env.action_space.n))
-
-    #Use 3 times the batch to learn
-    for epoch in range(6):
-
-        idxs = np.arange(numSteps)
-        np.random.shuffle(idxs)
-
-        for start in range(0, numSteps, batchSize):
-            
-            #Select the batch indexes data
-            end = start + batchSize
-            idx = idxs[start : end]
-
-            #Evaluate the batch of paris state-action
-            _, newLogProb, entropy, newValue = agent.GetActionValue(batchState[idx], batchActions[idx], batchMask[idx])
-
-            #Compute log ratio:
-            logRatio = newLogProb - batchLogProb[idx]
-            ratio = logRatio.exp()
-
-            #Policy loss normalized
-            mbAdvantage = batchAdvantages[idx]
-
-            policyLoss1 = -mbAdvantage * ratio
-            policyLoss2 = -mbAdvantage * torch.clamp(ratio, 1 - clipCoeff, 1 + clipCoeff)
-            
-            #Expectation value of PPO objective
-            policyLoss = torch.max(policyLoss1, policyLoss2).mean()
-
-            #value Loss 
-            vLoss = 1/2 * ((newValue.view(-1) - batchReturns[idx]) ** 2).mean()
-
-            #Total loss
-            loss = policyLoss - 0.01*entropy.mean() + 0.5*vLoss
-
-            #Backpropagation
-            optimizer.zero_grad()
-            loss.backward()
-            torch.nn.utils.clip_grad_norm_(agent.parameters(), max_norm=0.5)
-            optimizer.step()
-
-    MeanReward = rewardBuffer.sum()
-
-    if debug:
 
         nEpisode = int(doneBuffer.sum().item())
         if nEpisode > 0:
@@ -210,16 +211,23 @@ for update in range(numEpisode):
             avgLen = numSteps 
         totalTerminated = nEpisode - crash
         avgSpeed = np.round(np.mean(speed), 2) if 'speed' in locals() else 0.0
+        avgEpReward = np.round(np.mean(completedEpRewards), 4) if len(completedEpRewards) > 0 else 0
+        avgSuccessRate = np.mean(successRate[-100:]) if len(successRate) > 0 else 0
 
         if update == 0:
-            print(f"{'Update':<8} | {'Crashes':<8} | {'Truncated':<9} | {'Avg Len':<9} | {'Avg Spd':<9} | {'Mean Reward':<12}")
+            print(f"{'Update':<8} | {'Crashes':<8} | {'Truncated':<9} | {'avgSuccessRate':<9} | {'Avg Spd':<9} | {'Mean Reward':<12}")
             print("-" * 75)
 
-        print(f"{update + 1}/{numEpisode:<8} | {crash:<8} | {totalTerminated:<9} | {avgLen:<9} | {avgSpeed:<9} | {MeanReward:<12.2f}")
+        print(f"{update + 1}/{numEpisode:<8} | {crash:<8} | {totalTerminated:<9} | {avgSuccessRate:<9} | {avgSpeed:<9} | {avgEpReward:<12.2f}")
 
-    else: print(f"Update {update+1}/{numEpisode} | Loss: {loss.item():.4f} | Mean Reward: {MeanReward:.2f}")
+        if avgEpReward > best_reward:
+            best_reward = avgEpReward
+            torch.save(agent.state_dict(), "PPO_Champion.pth")
 
-    torch.save(agent.state_dict(), "singleTraining.pth")
+        Data.writerow([update, avgEpReward, avgSuccessRate])
+        f1.flush()
+
+        torch.save(agent.state_dict(), "singleTraining.pth")
 
 
-env.close()
+    env.close()

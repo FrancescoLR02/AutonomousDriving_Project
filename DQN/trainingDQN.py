@@ -43,6 +43,8 @@ config = {
     'duration': 80,
     'lanes_count': 3,
     "policy_frequency": 2,
+    'right_lane_reward': 0,
+    'high_speed_reward': 0.6,
 }
 
 env = gymnasium.make(envName, config=config, render_mode=None)
@@ -53,10 +55,10 @@ lr = 1e-4
 gamma = 0.99
 epsStart = 0.9
 epsEnd = 0.005
-epsDecay = 20000
+epsDecay = 2500
 tau = 0.001
 
-batchSize = 64
+batchSize = 128
 numEpisodes = 6000
 
 
@@ -80,12 +82,13 @@ steps = 0
 
 episodeRewards = []
 losses = []
+success = []
 
 #Training:
-
-with open('DQN/DDQNTrainingData.csv', 'w', newline = '') as f1:
+best_reward = -float('inf')
+with open('DQN/DDQNTrainingData1.csv', 'w', newline = '') as f1:
     Data = csv.writer(f1)
-    Data.writerow(['Episode', 'Avg Reward', 'Avg Loss'])
+    Data.writerow(['Episode', 'Avg Reward', 'Avg Loss', 'SuccessRate', 'Eps'])
     
     for update in range(numEpisodes):
 
@@ -99,7 +102,7 @@ with open('DQN/DDQNTrainingData.csv', 'w', newline = '') as f1:
             action = UtilFunctions.GetAction(env, state, policyNet, device, steps)
             steps += 1
 
-            obs, reward, terminated, truncated, _ = env.step(action.item())
+            obs, reward, terminated, truncated, info = env.step(action.item())
 
             totalReward += reward
 
@@ -134,25 +137,27 @@ with open('DQN/DDQNTrainingData.csv', 'w', newline = '') as f1:
             targetNet.load_state_dict(targetNet_stateDict)
 
             if done:
+                success.append(not(info['crashed']))
                 episodeRewards.append(totalReward)
                 if len(episodeLosses) > 0:
                     losses.append(np.mean(episodeLosses))
                 break
 
-        best_reward = -float('inf')
-
         if update % 100 == 0:
-            torch.save(policyNet.state_dict(), "DDQN_policyNet.pth")
+            torch.save(policyNet.state_dict(), "DDQN_policyNet1.pth")
         
-        if update % 10 == 0 and len(episodeRewards) > 0:
-            avgRev = np.mean(episodeRewards[-10:])
-            avgLoss = np.mean(losses[-10:]) if len(losses) > 0 else 0
-            print(f" Episode {update} | Avg Reward: {avgRev:.2f} | Avg Loss: {avgLoss:.4f} | Eps: {epsEnd + (epsStart - epsEnd) * np.exp(-1 * steps/epsDecay):.2f}")
+        #debug informations
+        if update % 100 == 0 and len(episodeRewards) > 0:
+            avgRev = np.mean(episodeRewards[-100:])
+            avgLoss = np.mean(losses[-100:]) if len(losses) > 0 else 0
+            successRate = np.mean(success[-100:]) if len(success) > 0 else 0
+            eps = epsEnd + (epsStart - epsEnd) * np.exp(-1 * steps/epsDecay)
+            print(f" Episode {update} | Avg Reward: {avgRev:.2f} | Avg Loss: {avgLoss:.4f} | Eps: {eps:.2f} | SuccessRate: {successRate}")
 
-            Data.writerow([update, avgRev, avgLoss])
+            Data.writerow([update, avgRev, avgLoss, successRate, eps])
             f1.flush()
 
             if avgRev > best_reward:
                 best_reward = avgRev
-                torch.save(policyNet.state_dict(), "DDQN_Champion.pth")
+                torch.save(policyNet.state_dict(), "DDQN_Champion1.pth")
         
