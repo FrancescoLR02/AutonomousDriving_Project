@@ -17,7 +17,7 @@ np.random.seed(0)
 random.seed(0)
 #torch.Agent_seed(0)
 
-baseline = True
+baseline = False
 
 pid = os.getpid()
 
@@ -27,9 +27,14 @@ config = {
     "observation": {
         "type": "Kinematics",
         "vehicles_count": 10,
-        "features": ["presence", "x", "y", "vx", "vy", 'cos_h', 'sin_h'],
+        "features": ["presence", "x", "y", "vx", "vy"],
         "normalize": True,   
         "absolute": False,
+    },
+
+    "action":{
+        "type": "DiscreteMetaAction",
+        "target_speeds": [18, 21, 24, 27, 30], 
     },
     'screen_height': 300,
     'screen_width': 1200,
@@ -57,12 +62,12 @@ done, truncated = False, False
 
 fileName = {
     True: 'Baseline',
-    False: 'Agent'
+    False: 'PPO'
 }
 
 files = {
-    'Data': f'Data/{fileName[baseline]}ControlActions_{pid}.csv',
-    'Rewards': f'Data/{fileName[baseline]}ControlRewards_{pid}.csv'
+    'Data': f'Data/{fileName[baseline]}_agentControlActions_{pid}.csv',
+    'Rewards': f'Data/{fileName[baseline]}_agentControlRewards_{pid}.csv'
 }
 rewardsHeader = ['Crashed', 'Rewards', 'AvgSpeed', 'StdSpeed']
 actionsHeader = ['Speed', 'Action']
@@ -105,10 +110,7 @@ with  open(files['Rewards'], 'a', newline = '') as f2: #open(files['Data'], 'a',
         #Take a step in the simulation
         nextState, reward, done, truncated, info = env.step(action)
 
-        #dataWriter.writerow([info['speed'], info['action']])
         avgSpeed.append(info['speed'])
-
-        #env.render()
 
         #Compute final reward
         epReward += reward
@@ -121,7 +123,6 @@ with  open(files['Rewards'], 'a', newline = '') as f2: #open(files['Data'], 'a',
             state, _ = env.reset()
             avgSpeed = []
             epReward = 0
-            #f1.flush()
             f2.flush()
 
 

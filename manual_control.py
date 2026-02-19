@@ -17,10 +17,14 @@ config = {
         "normalize": True,   
         "absolute": False,
     },
+    "action":{
+        "type": "DiscreteMetaAction",
+        "target_speeds": [15, 18, 21, 24, 27, 30], 
+    },
     "manual_control": True,
     'screen_height': 300,
     'screen_width': 1200,
-    'duration': 80,
+    'duration': 40,
     "policy_frequency": 2
 
 
@@ -69,11 +73,12 @@ with open(files['Data'], 'a', newline = '') as f1, open(files['Rewards'], 'a', n
         #print(info['action'], np.round(reward, 4))
         #dataWriter.writerow([info['speed'], info['action']])
         avgSpeed.append(info['speed'])
+        print(info)
 
         env.render()
 
         #Compute final reward
-        epReward += reward
+        epReward += 2*reward
 
         if done or truncated:
             rewardWriter.writerow([info['crashed'], epReward, np.mean(avgSpeed), np.std(avgSpeed)])

@@ -9,19 +9,26 @@ config = {
    "observation": {
       "type": "Kinematics",
       "vehicles_count": 10,
-      "features": ["presence", "x", "y", "vx", "vy"],
+      "features": ["presence", "x", "y", "vx", "vy", "cos_h", "sin_h"],
       "normalize": True,   
       "absolute": False,
    },
+   "action":{
+      "type": "DiscreteMetaAction",
+      "target_speeds": [18, 21, 24, 27], 
+    },
    'screen_height': 300,
    'screen_width': 1200,
-   'duration': 5
+   'duration': 5,
+   "lanes_count": 3,
 }
 
 
 
 model = Environment()
 highwayEnv = model.HighwayEnv(config)
+mergerEnv = model.MergerEnv(config)
+
 highwayEnv.reset()
 
 run = True
@@ -39,23 +46,22 @@ while run:
          'speed': highwayEnv.unwrapped.vehicle.speed,
       }
 
-      mergerEnv = model.MergerEnv(config)
       mergerEnv.reset()
       print(finalState['speed'])
       mergerEnv.unwrapped.vehicle.speed = finalState['speed']
 
       mergerRun = True
       while mergerRun:
-         obs, reward, done, truncated, _ = mergerEnv.step(mergerEnv.action_space.sample())
+         obs, reward, done, truncated, info = mergerEnv.step(mergerEnv.action_space.sample())
 
          mergerEnv.render()
 
          if done or truncated:
             state, _ = mergerEnv.reset()
             highwayEnv.reset()
-            mergerEnv.close()
             mergerRun = False
 
 highwayEnv.close()
+mergerEnv.close()
 
 

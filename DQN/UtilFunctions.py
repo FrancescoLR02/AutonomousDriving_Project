@@ -7,14 +7,14 @@ from ReplayBuffer import *
 
 epsStart = 0.9
 epsEnd = 0.01
-epsDecay = 2500
+#epsDecay = 2500
 gamma = 0.99
-batchSize = 128
+batchSize = 64
 
-def GetAction(env, state, policyNet, device, steps):
+def GetAction(env, state, policyNet, device, update, epsDecay = 2500):
 
    sample = np.random.random()
-   epsTH = epsEnd + (epsStart - epsEnd) * np.exp(-1 * steps/epsDecay)
+   epsTH = epsEnd + (epsStart - epsEnd) * np.exp(-1 * update/epsDecay)
 
    if sample > epsTH:
       with torch.no_grad():
@@ -39,12 +39,13 @@ def Optimizer(memory, policyNet, targetNet, optimizer, device):
    nonFinal_mask = torch.tensor(tuple(map(lambda s: s is not None, batch.nextState)), device = device, dtype = torch.bool)
 
    #Apply the mask to the states:
-   nonFinal_nextStates = torch.cat([s for s in batch.nextState if s is not None])
+   validNextState = [s for s in batch.nextState if s is not None]
+   nonFinal_nextStates = torch.tensor(np.array(validNextState), dtype = torch.float32, device = device)
 
    #Define the batches 
-   stateBatch = torch.cat(batch.state)
-   actionBatch = torch.cat(batch.action)
-   rewardBatch = torch.cat(batch.reward)
+   stateBatch = torch.tensor(np.array(batch.state), dtype=torch.float32, device=device)
+   actionBatch = torch.tensor(batch.action, dtype=torch.int64, device=device).unsqueeze(1)
+   rewardBatch = torch.tensor(batch.reward, dtype=torch.float32, device=device)
 
    #Compute the action-value function
    stateActionValue = policyNet(stateBatch).gather(1, actionBatch)
