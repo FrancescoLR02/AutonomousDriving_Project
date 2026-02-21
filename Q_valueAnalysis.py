@@ -45,7 +45,7 @@ nActions = env.action_space.n
 stateShape = np.prod(env.observation_space.shape)
 
 agent = DQN(stateShape, nActions)
-checkpoint = torch.load("DQN/Models/DDQN_policyNet_950.pth", map_location=torch.device('cpu'))
+checkpoint = torch.load("DDQN_Champion.pth", map_location=torch.device('cpu'))
 agent.load_state_dict(checkpoint)
 agent.eval()
 
@@ -94,6 +94,8 @@ with open(files['Rewards'], 'a', newline = '') as f2: #open(files['Data'], 'a', 
 
          qValue = agent(state)
          action = qValue.max(1).indices.item()
+
+         print(qValue, action)
                   
       #Take a step in the simulation
       nextState, reward, done, truncated, info = env.step(action)

@@ -73,7 +73,6 @@ with open(files['Data'], 'a', newline = '') as f1, open(files['Rewards'], 'a', n
         #print(info['action'], np.round(reward, 4))
         #dataWriter.writerow([info['speed'], info['action']])
         avgSpeed.append(info['speed'])
-        print(info)
 
         env.render()
 

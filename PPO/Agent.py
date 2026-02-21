@@ -19,24 +19,31 @@ class Agent(nn.Module):
          self.outputDim = env.action_space.n
 
 
-      self.Network = nn.Sequential(
+      #Actor Network
+      self.Actor = nn.Sequential(
          nn.Linear(self.inputDim, 128),
          nn.ReLU(),
          nn.Linear(128, 256),
-         nn.ReLU()
+         nn.ReLU(),
+         nn.Linear(256, self.outputDim)
       )
 
-      self.Actor = nn.Linear(256, self.outputDim)
-      self.Critic = nn.Linear(256, 1)
+      #Critic Network
+      self.Critic = nn.Sequential(
+         nn.Linear(self.inputDim, 128),
+         nn.ReLU(),
+         nn.Linear(128, 256),
+         nn.ReLU(),
+         nn.Linear(256, 1)
+      )
 
    #Critics prediction
    def GetValue(self, x):
-      return self.Critic(self.Network(x))
+      return self.Critic(x)
 
    def GetActionValue(self, x, action = None):
       
-      hiddenLayers = self.Network(x)
-      logits = self.Actor(hiddenLayers)
+      logits = self.Actor(x)
 
       #Output of the network are applied to softmax 
       outputProb = Categorical(logits = logits)
@@ -45,7 +52,7 @@ class Agent(nn.Module):
       if action is None:
          action = outputProb.sample()
 
-      value = self.Critic(hiddenLayers)
+      value = self.Critic(x)
 
       return action, outputProb.log_prob(action), outputProb.entropy(), value
 

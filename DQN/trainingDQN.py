@@ -21,9 +21,10 @@ np.set_printoptions(linewidth=300, suppress=True, precision=5)
 
 device = torch.device(
     "cuda" if torch.cuda.is_available() else
-    "mps" if torch.backends.mps.is_available() else
     "cpu"
 )
+
+print(device)
 
 # Set the seed and create the environment
 np.random.seed(0)
@@ -45,9 +46,11 @@ config = {
         "type": "DiscreteMetaAction",
         "target_speeds": [18, 21, 24, 27, 30], 
     },
-    'duration': 80,
+    'duration': 40,
     'lanes_count': 3,
     "policy_frequency": 2,
+    'high_speed_reward': 0.4,
+    'right_lane_reward':0
 }
 
 env = gymnasium.make(envName, config=config, render_mode=None)
@@ -55,14 +58,14 @@ env = gymnasium.make(envName, config=config, render_mode=None)
 
 #Hyperparameters
 lr = 1e-4
-gamma = 0.99
+gamma = 0.9
 epsStart = 0.9
 epsEnd = 0.01
-epsDecay = 2000
-tau = 0.001
+epsDecay = 30_000
+tau = 0.005
 
 batchSize = 64
-numEpisodes = 10_000
+numEpisodes = 6000
 
 
 #initialize the environment
@@ -78,7 +81,7 @@ targetNet = modelDQN.DQN(stateShape, nActions).to(device)
 targetNet.load_state_dict(policyNet.state_dict())
 
 optimizer = optim.Adam(policyNet.parameters(), lr = lr, amsgrad=True)
-memory = ReplayBuffer.ReplayMemory(capacity=30_000)
+memory = ReplayBuffer.ReplayMemory(capacity=100_000)
 
 steps = 0
 
@@ -105,7 +108,7 @@ with open('DQN/DDQNTrainingData1.csv', 'w', newline = '') as f1:
 
         for t in count():
             stateTensor = torch.tensor(state, dtype=torch.float32, device=device).unsqueeze(0)
-            action = UtilFunctions.GetAction(env, stateTensor, policyNet, device, update, epsDecay=epsDecay)
+            action = UtilFunctions.GetAction(env, stateTensor, policyNet, device, steps, epsDecay=epsDecay)
             steps += 1
 
             obs, reward, terminated, truncated, info = env.step(action.item())
@@ -130,7 +133,7 @@ with open('DQN/DDQNTrainingData1.csv', 'w', newline = '') as f1:
             state = nextState
 
             #Optimize every 4 steps
-            if steps % 4 == 0:
+            if steps % 1 == 0 and len(memory) > 1000:
 
                 #Perform one step in optimization
                 lossValue = UtilFunctions.Optimizer(memory, policyNet, targetNet, optimizer, device)
@@ -167,7 +170,7 @@ with open('DQN/DDQNTrainingData1.csv', 'w', newline = '') as f1:
             avgLoss = np.mean(losses[-50:]) if len(losses) > 0 else 0
             avgSpeed = np.mean(speed[-50:]) if len(speed) > 0 else 0
             successRate = np.mean(success[-50:]) if len(success) > 0 else 0
-            eps = epsEnd + (epsStart - epsEnd) * np.exp(-1 * update/epsDecay)
+            eps = epsEnd + (epsStart - epsEnd) * np.exp(-1 * steps/epsDecay)
             print(f"{update:<8} | {avgRev:.5f} | {avgSpeed:.5f} | {avgLoss:.5f} | {eps:.5f} | {successRate:.5f}")
 
             Data.writerow([update, avgRev, avgLoss, successRate, eps])

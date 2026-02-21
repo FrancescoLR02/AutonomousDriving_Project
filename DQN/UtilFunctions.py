@@ -9,12 +9,12 @@ epsStart = 0.9
 epsEnd = 0.01
 #epsDecay = 2500
 gamma = 0.99
-batchSize = 64
+batchSize = 128
 
-def GetAction(env, state, policyNet, device, update, epsDecay = 2500):
+def GetAction(env, state, policyNet, device, steps, epsDecay = 2500):
 
    sample = np.random.random()
-   epsTH = epsEnd + (epsStart - epsEnd) * np.exp(-1 * update/epsDecay)
+   epsTH = epsEnd + (epsStart - epsEnd) * np.exp(-1 * steps/epsDecay)
 
    if sample > epsTH:
       with torch.no_grad():

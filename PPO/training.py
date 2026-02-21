@@ -24,15 +24,18 @@ config = {
     "observation": {
         "type": "Kinematics",
         "vehicles_count": 10,
-        "features": ["presence", "x", "y", "vx", "vy"],
+        "features": ["presence", "x", "y", "vx", "vy", "cos_h", "sin_h"],
         "normalize": True,   
         "absolute": False,
+    },
+
+    "action":{
+        "type": "DiscreteMetaAction",
+        "target_speeds": [18, 21, 24, 27, 30], 
     },
     'duration': 80,
     'lanes_count': 3,
     "policy_frequency": 2,
-    'right_lane_reward': 0,
-    'high_speed_reward': 0.6,
 }
 
 
@@ -108,12 +111,12 @@ with open('PPO/PPOrainingData.csv', 'w', newline = '') as f1:
             speed.append(info['speed'])
 
 
-            rewardBuffer[i] = reward
             done = terminated or truncated
+            rewardBuffer[i] = reward
             stateBuffer[i] = state
             actionBuffer[i] = action
             logProbBuffer[i] = logProb
-            doneBuffer[i] = done
+            doneBuffer[i] = terminated
             valuesBuffer[i] = value        
             
             if done:
