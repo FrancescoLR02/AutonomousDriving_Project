@@ -33,12 +33,12 @@ config = {
    },
    'screen_height': 300,
    'screen_width': 1200,
-   'duration': 80,
+   'duration': 40,
    "policy_frequency": 2
 }
 
 env = gymnasium.make(envName, config=config, render_mode='human')
-# Evaluation loop
+
 state, _ = env.reset()
 
 nActions = env.action_space.n 
@@ -53,40 +53,32 @@ agent.eval()
 
 done, truncated = False, False
 
-
-fileName = 'DQN_agent'
-
+#Define the name of the file
+fileName = 'Q_ValueDQN'
 files = {
-   'Data': f'Data/{fileName}ControlActions_{pid}.csv',
-   'Rewards': f'Data/{fileName}ControlRewards_{pid}.csv'
+   'Data': f'Data/{fileName}.csv',
 }
-rewardsHeader = ['Crashed', 'Rewards', 'AvgSpeed', 'StdSpeed']
-actionsHeader = ['Speed', 'Action']
+
+#Define the header information
+Q_ValHeader = ['SimNumber', 'InstantReward', 'InstantSpeed', 'LaneLeft', 'Idle', 'LaneRight', 'Faster', 'Slower', 'Action']
 
 needsHeader = {key: not os.path.isfile(path) for key, path in files.items()}
 
 
 #Write on file the inforations
-with open(files['Rewards'], 'a', newline = '') as f2: #open(files['Data'], 'a', newline = '') as f1
+with open(files['Data'], 'a', newline = '') as f2:
 
-   #dataWriter = csv.writer(f1)
-   rewardWriter = csv.writer(f2)
-
-   #Define the headers of the csv files
-   # if needsHeader['Data']:
-   #    dataWriter.writerow(actionsHeader)
+   Data = csv.writer(f2)
    
-   if needsHeader['Rewards']:
-      rewardWriter.writerow(rewardsHeader)
+   #Define if it needs an header
+   if needsHeader['Data']:
+      Data.writerow(Q_ValHeader)
 
 
-   epReward = 0
-   episode = 0
-
-   avgSpeed = []
+   SimNumber = 0
 
    while True:
-      episode += 1
+      SimNumber += 1
 
       state = torch.as_tensor(state, dtype=torch.float32).unsqueeze(0)
 
@@ -95,27 +87,21 @@ with open(files['Rewards'], 'a', newline = '') as f2: #open(files['Data'], 'a', 
          qValue = agent(state)
          action = qValue.max(1).indices.item()
 
-         print(qValue, action)
+         qList = qValue.squeeze().tolist()
                   
       #Take a step in the simulation
       nextState, reward, done, truncated, info = env.step(action)
-      avgSpeed.append(info['speed'])
 
-      #dataWriter.writerow([info['speed'], info['action']])
+
+      Data.writerow([SimNumber, reward, info['speed'], qList[0], qList[1], qList[2], qList[3], qList[4], action])
 
       env.render()
-
-      #Compute final reward
-      epReward += reward
 
       #update state
       state = nextState
 
       if done or truncated:
-         rewardWriter.writerow([info['crashed'], epReward, np.mean(avgSpeed), np.std(avgSpeed)])
          state, _ = env.reset()
-         epReward = 0
-         avgSpeed = []
          f2.flush()
 
 

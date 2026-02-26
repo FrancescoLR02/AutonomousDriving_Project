@@ -38,11 +38,12 @@ config = {
     },
    'screen_height': 300,
    'screen_width': 1200,
-   'duration': 80,
-   "policy_frequency": 2
+   "policy_frequency": 2,
+   'duration': 40,
+   'vehicle_density': 0.8
 }
 
-env = gymnasium.make(envName, config=config, render_mode='human')
+env = gymnasium.make(envName, config=config, render_mode=None)
 # Evaluation loop
 state, _ = env.reset()
 
@@ -50,7 +51,7 @@ nActions = env.action_space.n
 stateShape = np.prod(env.observation_space.shape)
 
 agent = DQN(stateShape, nActions)
-checkpoint = torch.load("DQN/Models/DDQN_policyNet_5250.pth", map_location=torch.device('cpu'))
+checkpoint = torch.load("DDQN_Champion1.pth", map_location=torch.device('cpu'))
 agent.load_state_dict(checkpoint)
 agent.eval()
 
@@ -108,7 +109,7 @@ with open(files['Rewards'], 'a', newline = '') as f2: #open(files['Data'], 'a', 
 
       #dataWriter.writerow([info['speed'], info['action']])
 
-      env.render()
+      #env.render()
 
       #Compute final reward
       epReward += reward

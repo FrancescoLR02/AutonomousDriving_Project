@@ -25,7 +25,8 @@ config = {
     'screen_height': 300,
     'screen_width': 1200,
     'duration': 40,
-    "policy_frequency": 2
+    "policy_frequency": 2,
+    'vehicle_density': 0.8
 
 
 }
@@ -77,7 +78,7 @@ with open(files['Data'], 'a', newline = '') as f1, open(files['Rewards'], 'a', n
         env.render()
 
         #Compute final reward
-        epReward += 2*reward
+        epReward += reward
 
         if done or truncated:
             rewardWriter.writerow([info['crashed'], epReward, np.mean(avgSpeed), np.std(avgSpeed)])

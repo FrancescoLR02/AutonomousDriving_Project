@@ -22,8 +22,6 @@ run:
 python PPO_evaluate.py
 ```
 
-(or add "False at the end, it is default value)
-
 ### DQN model:
 run:
 ```bash

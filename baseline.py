@@ -17,7 +17,7 @@ class BaselineAgent:
    def __init__(self, env):
       self.env = env
 
-   def BasePolicy(self, state, th = 0.1, epsilon = 0.2):
+   def BasePolicy(self, state, th = 0.2, epsilon = 0.2):
 
       #Positions of all the other vehicles
       x, y = state[1:, 1], state[1:, 2]

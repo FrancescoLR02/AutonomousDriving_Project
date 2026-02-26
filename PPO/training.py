@@ -29,13 +29,16 @@ config = {
         "absolute": False,
     },
 
-    "action":{
+   "action":{
         "type": "DiscreteMetaAction",
         "target_speeds": [18, 21, 24, 27, 30], 
     },
-    'duration': 80,
+    'duration': 50,
     'lanes_count': 3,
     "policy_frequency": 2,
+    'high_speed_reward': 0.5,
+    'right_lane_reward':0,
+    'collision_reward': -1,
 }
 
 
