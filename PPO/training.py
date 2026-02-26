@@ -43,7 +43,7 @@ env = gymnasium.make(envName, config=config, render_mode=None)
 
 #Training hyperparameters
 lr = 1e-4
-gamma = 0.99
+gamma = 0.90
 gaeLambda = 0.95
 clipCoeff = 0.2
 

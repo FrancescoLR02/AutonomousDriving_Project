@@ -5,6 +5,7 @@ import torch
 import random
 import os 
 import csv
+import sys
 
 from baseline import BaselineAgent
 from PPO.Agent import *
@@ -17,7 +18,11 @@ np.random.seed(0)
 random.seed(0)
 #torch.Agent_seed(0)
 
-baseline = False
+if len(sys.argv) == 1:
+    baseline = False
+
+else:
+    baseline = bool(sys.argv[1])
 
 pid = os.getpid()
 

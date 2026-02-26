@@ -8,7 +8,7 @@ from ReplayBuffer import *
 epsStart = 0.9
 epsEnd = 0.01
 #epsDecay = 2500
-gamma = 0.99
+#gamma = 0.99
 batchSize = 128
 
 def GetAction(env, state, policyNet, device, steps, epsDecay = 2500):
@@ -25,7 +25,7 @@ def GetAction(env, state, policyNet, device, steps, epsDecay = 2500):
    
 
 
-def Optimizer(memory, policyNet, targetNet, optimizer, device):
+def Optimizer(memory, policyNet, targetNet, optimizer, device, gamma = 0.99):
 
    if len(memory) < batchSize:
       return

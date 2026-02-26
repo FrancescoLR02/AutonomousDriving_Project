@@ -1,54 +1,78 @@
-# Autonomous Driving project
+# Autonomous Driving with Reinforcement Learning
 
-This is the repository for the Autonomous Driving project of the Reinforcement Learning course.
+## hierarchy and How to Run:
 
-The goal of your agent will be to drive an Autonomous Vehicle through an highway, taking into consideration the presence of other vehicles. For this project you will use the [HighwayEnv](https://github.com/Farama-Foundation/HighwayEnv) library, which can be installed very easily: https://highway-env.farama.org/installation/. 
+Only the models, scripts and Analysis jupyter are given. The data gathered is only visualized in the Jupter Notebook.
 
-<img src="https://raw.githubusercontent.com/eleurent/highway-env/gh-media/docs/media/highway_fast_dqn.gif"/>
+In the three main folders are presents the scripts to run the training of the models (PPO, DQN and CL framework) (PPO also present a parallelized version of the algorithm, but this was at least not used.)
 
-Recall that you can choose to implement the Deep-RL algorithm that you prefer. Moreover, the provided code is just a skeleton to help you get started, feel free to modify it. Finally, don't worry if the collision rate at test time is not exactly zero.
+The optimal weights for each model are respectively ...
 
-## Environment specifications
+### Baseline: 
 
-### State space:
-The state space consists in a `V x F` array that describes a list of `V = 5` vehicles by a set of features of size 
-`F = 5`.
+run:
+```bash
+python PPO_evaluate.py True
+```
+("True" runs the baseline)
 
-The features for each vehicle are:
-- Presence (boolean value)
-- Normalized position along the x axis w.r.t. the ego-vehicle
-- Normalized position along the y axis w.r.t. the ego-vehicle
-- Normalized velocity along the x axis w.r.t. the ego-vehicle
-- Normalized velocity along the y axis w.r.t. the ego-vehicle
+### PPO model:
+run:
+```bash
+python PPO_evaluate.py
+```
 
-***Note:*** the first row contains the features of the ego-vehicle, which are the only ones referred to the absolute reference frame.
+(or add "False at the end, it is default value)
 
-### Action space
-The action space is discrete, and it contains 5 possible actions:
-  - Change lane to the left
-  - Idle
-  - Change lane to the right
-  - Go faster
-  - Go slower
+### DQN model:
+run:
+```bash
+python DQN_evaluate.py
+```
 
-### Reward function
-The reward function is a composition of various terms:
-- Bonus term for progressing quickly on the road
-- Bonus term for staying on the rightmost lane
-- Penalty term for collisions
+...
 
-***Note:*** you are encouraged to take a look at the documentation for further information and a deeper understanding of the environment: https://highway-env.farama.org/
 
-## Baselines
-As written on the instructions for the projects, you have to implement a baseline policy to be compared against the trained RL agent. For this project, you will need to compare the performances of your agent against two baselines:
-- The one you define
-- The *manual control* policy, in which you will manually control the vehicle using the keyboard. More details on this can be found on the file `manual_control.py` and on the HighwayEnv docs (the only code you have to add here is the one needed to save information that you want to include in the report).
 
-***Note:*** It may not be super easy to outperform the manual control policy with your RL agent. This is not a problem, the goal is to obtain comparable results.
 
-## Bonus
-As written on the instructions for the projects, you may play around with the problem definition, for example:
-- Use multiple algorithms
-- Consider a different state representation
-- Modify the reward function
-- Change some environment configurations (refer again at the [documentation](https://highway-env.farama.org/))
+
+
+## Presentation of the project 
+
+This project explores the application of Reinforcement Learning (RL) algorithms to train autonomous agents in complex, heterogeneous highway environments. It compares the performance of a Deep Q-Network (DQN) and Proximity Policy Optimization (PPO) against a heuristic baseline policy using the `highway-env` gymnasium framework. 
+
+Additionally, the project evaluates the models' adaptability through a Continual Learning (CL) setup, transferring agents from a standard highway navigation task to a complex merging scenario. 
+
+## Environment Setup
+
+The driving environment is modeled as a Markov Decision Process (MDP) with the following characteristics:
+
+* **State Space:** A 10x7 matrix tracking the 10 closest vehicles. Features include a boolean presence bit, spatial positions $(x, y)$, velocities $(v_x, v_y)$, and angular positions ($\cosh$, $\sinh$). The input is flattened into a 1D vector for the neural networks.
+* **Action Space:** A discrete meta-action space consisting of 5 actions: `[Faster, Slower, Right Lane, Left Lane, Idle]`.
+* **Reward Function:** Customized to encourage confident overtaking and speed. The default reward for remaining in the rightmost lane is set to 0 to prevent over-conservative policies. It includes a bonus for reaching high speeds and a penalty for collisions.
+
+## Model Architectures
+
+To ensure a fair comparison, both RL agents utilize a similar core neural network structure.
+
+### 1. Deep Q-Network (DQN)
+An off-policy algorithm that uses a Replay Buffer to improve sample efficiency and random $\varepsilon$-greedy exploration.
+* **Architecture:** Feed-Forward Neural Network (FFNN) with two fully connected hidden layers containing 128 and 256 neurons. It uses ReLU activation for hidden layers and a linear output layer for the 5 discrete Q-values.
+* **Optimization:** Trained using Huber Loss (to handle temporal difference error outliers) and the Adam optimizer (Learning Rate: 1e-4, Discount Factor: 0.99). 
+* **Exploration:** $\varepsilon$ decays from 0.9 to 0.01 over 25,000 steps.
+
+### 2. Proximity Policy Optimization (PPO)
+An on-policy Actor-Critic algorithm that optimizes the target policy directly while ensuring updates do not deviate excessively from the old policy.
+* **Architecture:** Both Actor and Critic networks use the identical FFNN architecture as the DQN (128, 256 neurons, ReLU). 
+* **Output:** The Actor outputs a probability distribution over the discrete action space, while the Critic outputs a scalar representing the expected cumulative reward.
+* **Optimization:** Uses a clipped objective function (clip coefficient: 0.2), alongside entropy and state-value loss terms.
+
+### 3. Baseline Policy
+A heuristic, non-ML baseline agent that makes decisions using hardcoded positional and velocity thresholds. It identifies the closest vehicles and executes basic spatial rules to determine lane changes and acceleration.
+
+## Project Structure
+
+* `trainingDQN.py`: Handles the setup, `highway-v0` environment configuration, and training loop for the off-policy DQN agent.
+* `modelDQN.py`: Contains the PyTorch neural network class definitions.
+* `ReplayBuffer.py`: Manages the storage and sampling of state transitions for the DQN.
+* `Analysis.ipynb`: Evaluates the trained agents by analyzing CSV logs, plotting speed distributions, and comparing success metrics between the RL agents and the baseline.

@@ -31,6 +31,11 @@ config = {
       "normalize": True,   
       "absolute": False,
    },
+
+   "action":{
+        "type": "DiscreteMetaAction",
+        "target_speeds": [18, 21, 24, 27, 30], 
+    },
    'screen_height': 300,
    'screen_width': 1200,
    'duration': 80,
@@ -45,7 +50,7 @@ nActions = env.action_space.n
 stateShape = np.prod(env.observation_space.shape)
 
 agent = DQN(stateShape, nActions)
-checkpoint = torch.load("DQN/Models/DDQN_policyNet_950.pth", map_location=torch.device('cpu'))
+checkpoint = torch.load("DQN/Models/DDQN_policyNet_5250.pth", map_location=torch.device('cpu'))
 agent.load_state_dict(checkpoint)
 agent.eval()
 
@@ -94,6 +99,8 @@ with open(files['Rewards'], 'a', newline = '') as f2: #open(files['Data'], 'a', 
 
          qValue = agent(state)
          action = qValue.max(1).indices.item()
+
+         #print(qValue)
                   
       #Take a step in the simulation
       nextState, reward, done, truncated, info = env.step(action)

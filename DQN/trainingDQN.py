@@ -42,15 +42,17 @@ config = {
         "absolute": False,
     },
 
-    "action":{
+   "action":{
         "type": "DiscreteMetaAction",
         "target_speeds": [18, 21, 24, 27, 30], 
     },
-    'duration': 40,
+    'duration': 50,
     'lanes_count': 3,
     "policy_frequency": 2,
-    'high_speed_reward': 0.4,
-    'right_lane_reward':0
+    'high_speed_reward': 0.5,
+    'right_lane_reward':0,
+    'collision_reward': -1,
+
 }
 
 env = gymnasium.make(envName, config=config, render_mode=None)
@@ -61,10 +63,10 @@ lr = 1e-4
 gamma = 0.9
 epsStart = 0.9
 epsEnd = 0.01
-epsDecay = 30_000
-tau = 0.005
+epsDecay = 20_000
+tau = 0.001
 
-batchSize = 64
+batchSize = 128
 numEpisodes = 6000
 
 
@@ -133,10 +135,10 @@ with open('DQN/DDQNTrainingData1.csv', 'w', newline = '') as f1:
             state = nextState
 
             #Optimize every 4 steps
-            if steps % 1 == 0 and len(memory) > 1000:
+            if steps % 1 == 0:
 
                 #Perform one step in optimization
-                lossValue = UtilFunctions.Optimizer(memory, policyNet, targetNet, optimizer, device)
+                lossValue = UtilFunctions.Optimizer(memory, policyNet, targetNet, optimizer, device, gamma)
 
                 if lossValue is not None:
                     episodeLosses.append(lossValue)
