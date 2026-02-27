@@ -142,10 +142,10 @@ for taskID, envName in enumerate(tasksCL):
          print(f"{'Update':<8} | {'AvgRewHighw':<15} | {'SRHighw':<15} | {'AvgRewMerger':<15} | {'SRMerger':<15} |")
          print("-" * 75)
 
-      if update % 50 == 0:
+      if update % 25 == 0:
          torch.save(policyNet.state_dict(), f"Continual_Learning/Models/CLpolicyNet_{update}_{envName}.pth")
 
-         resDict = Evaluate(update, envName, nEval = 20)
+         resDict = Evaluate(update, envName, nEval = 40)
 
          HavgRew, MavgRew = np.mean(resDict['Rewards'][0]), np.mean(resDict['Rewards'][1])
          HsuccRate, MsuccRate = 1 - np.mean(resDict['Crashed'][0]), 1-np.mean(resDict['Crashed'][1])

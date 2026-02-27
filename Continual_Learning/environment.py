@@ -15,11 +15,11 @@ HighwayConfig = {
       },
       "action":{
          "type": "DiscreteMetaAction",
-         "target_speeds": [18, 21, 24, 27, 30], 
+         "target_speeds": [21, 24, 27, 30], 
       },
       'screen_height': 300,
       'screen_width': 1200,
-      'duration': 20,
+      'duration': 40,
       "lanes_count": 3,
    }
 
@@ -33,12 +33,10 @@ MergerConfig = {
          },
          "action":{
             "type": "DiscreteMetaAction",
-            "target_speeds": [12, 15, 18, 21, 24], 
+            "target_speeds": [18, 21, 24], 
          },
          'screen_height': 300,
          'screen_width': 1200,
-         'duration': 20,
-         "lanes_count": 3,
       }
 
 
