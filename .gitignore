@@ -1,2 +1,3 @@
 DQN/Models/*.pth
 Continual_Learning/Models/*.pth
+DQN/Models/*
