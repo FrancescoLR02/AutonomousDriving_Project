@@ -43,7 +43,7 @@ config = {
    'vehicle_density': 0.8
 }
 
-env = gymnasium.make(envName, config=config, render_mode='human')
+env = gymnasium.make(envName, config=config, render_mode=None)
 # Evaluation loop
 state, _ = env.reset()
 
@@ -73,14 +73,9 @@ needsHeader = {key: not os.path.isfile(path) for key, path in files.items()}
 
 
 #Write on file the inforations
-with open(files['Rewards'], 'a', newline = '') as f2: #open(files['Data'], 'a', newline = '') as f1
+with open(files['Rewards'], 'a', newline = '') as f2:
 
-   #dataWriter = csv.writer(f1)
    rewardWriter = csv.writer(f2)
-
-   #Define the headers of the csv files
-   # if needsHeader['Data']:
-   #    dataWriter.writerow(actionsHeader)
    
    if needsHeader['Rewards']:
       rewardWriter.writerow(rewardsHeader)
@@ -107,9 +102,7 @@ with open(files['Rewards'], 'a', newline = '') as f2: #open(files['Data'], 'a', 
       nextState, reward, done, truncated, info = env.step(action)
       avgSpeed.append(info['speed'])
 
-      #dataWriter.writerow([info['speed'], info['action']])
-
-      env.render()
+      #env.render()
 
       #Compute final reward
       epReward += reward

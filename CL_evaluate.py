@@ -2,41 +2,57 @@ import numpy as np
 import gymnasium
 import highway_env
 import torch
-import sys
 import os
+import csv
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
-
-from environment import *
+from Continual_Learning.environment import *
 import DQN.modelDQN
 
 
 
-def Evaluate(update, envName, nEval = 10):
+#pid = os.getpid()
 
-   model = Environment()
-   highwayEnv = model.HighwayEnv()
-   mergerEnv = model.MergerEnv()
+rm = 'human' 
 
-   # Same for both highway and merger
-   nActions = highwayEnv.action_space.n 
-   stateShape = np.prod(highwayEnv.observation_space.shape)
+model = Environment()
+highwayEnv = model.HighwayEnv(renderMode=rm)
+mergerEnv = model.MergerEnv(renderMode=rm)
+
+state, _ = highwayEnv.reset()
+
+nActions = highwayEnv.action_space.n 
+stateShape = np.prod(highwayEnv.observation_space.shape)
+
+currModel = torch.load(f'CL_Champion_merge-v0.pth')
+agent = DQN.modelDQN.DQN(stateShape, nActions)
+
+agent.load_state_dict(currModel)
+agent.eval()
+
+
+#Save on informations on file 
+fileName = 'CL_DQN_agent'
+
+files = {
+   'Rewards': f'Data/{fileName}ControlRewards.csv'
+}
+rewardsHeader = ['HighwayCrashed', 'HighwayRewards', 'MergerCrashed', 'MergerRewards']
+
+needsHeader = {key: not os.path.isfile(path) for key, path in files.items()}
+
+
+
+with open(files['Rewards'], 'a', newline = '') as f1:
+
+   rewardWriter = csv.writer(f1)
    
-   currModel = torch.load(f'Continual_Learning/Models/CLpolicyNet_{update}_{envName}.pth')
-   agent = DQN.modelDQN.DQN(stateShape, nActions)
+   if needsHeader['Rewards']:
+      rewardWriter.writerow(rewardsHeader)
 
-   agent.load_state_dict(currModel)
-   agent.eval()
 
-   resDict = {
-      'Crashed': ([], []),
-      'Rewards': ([], [])
-   }
 
-   run = 0
-
-   while run < nEval:
+   run = True
+   while run:
       #Define variable for the event
       crashedHighway = False
       crashedMerger = False
@@ -56,6 +72,9 @@ def Evaluate(update, envName, nEval = 10):
             action = qValue.max(1).indices.item()
 
          nextState, reward, done, truncated, info = highwayEnv.step(action)
+
+         highwayEnv.render()
+
          rewardHighway += reward
          state = nextState
 
@@ -68,8 +87,6 @@ def Evaluate(update, envName, nEval = 10):
       #Merger
       # Only run the merger if the highway was successfully completed
       if truncated and not crashedHighway:
-
-         #retrieve the speed on the last state of the highway --> merger will have the same speed
          finalState = {'speed': highwayEnv.unwrapped.vehicle.speed}
          
          mState, _ = mergerEnv.reset()
@@ -84,6 +101,10 @@ def Evaluate(update, envName, nEval = 10):
                action = qValue.max(1).indices.item()
 
             obs, reward, done, truncated, info = mergerEnv.step(action)
+
+            print(info['speed'])
+
+            mergerEnv.render()
             rewardMerger += reward
             mState = obs
 
@@ -96,15 +117,8 @@ def Evaluate(update, envName, nEval = 10):
          rewardMerger = 0.0
 
       #Save results
-      resDict['Crashed'][0].append(crashedHighway)
-      resDict['Crashed'][1].append(crashedMerger)
 
-      resDict['Rewards'][0].append(rewardHighway)
-      resDict['Rewards'][1].append(rewardMerger)
-
-      run += 1
+      rewardWriter.writerow([crashedHighway, rewardHighway, crashedMerger, rewardMerger])
 
    highwayEnv.close()
    mergerEnv.close()
-   
-   return resDict

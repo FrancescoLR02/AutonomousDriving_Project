@@ -35,33 +35,32 @@ np.random.seed(0)
 random.seed(0)
 torch.manual_seed(0)
 
-#Config and environment
-config = {
-   "observation": {
-      "type": "Kinematics",
-      "vehicles_count": 10,
-      "features": ["presence", "x", "y", "vx", "vy", 'cos_h', 'sin_h'],
-      "normalize": True,   
-      "absolute": False,
-   },
+HighwayConfig = {
+      "observation": {
+         "type": "Kinematics",
+         "vehicles_count": 10,
+         "features": ["presence", "x", "y", "vx", "vy", "cos_h", "sin_h"],
+         "normalize": True,   
+         "absolute": False,
+      },
+      "action":{
+         "type": "DiscreteMetaAction",
+         "target_speeds": [18, 21, 24, 27, 30], 
+      },
+      'screen_height': 300,
+      'screen_width': 1200,
+      'duration': 20,
+      "lanes_count": 3,
+   }
 
-   "action":{
-      "type": "DiscreteMetaAction",
-      "target_speeds": [18, 21, 24, 27, 30], 
-   },
-   'duration': 40,
-   'lanes_count': 3,
-   "policy_frequency": 2,
-   'right_lane_reward': 0,
-   'high_speed_reward': 0.5,
-}
 
 
 tasksCL = ['highway-fast-v0', 'merge-v0']
-epsPerTask = 200
+epsPerTask = 3_000
 
 lr = 1e-4
 tau = 0.001
+eps = 6_000
 
 memory = DQN.ReplayBuffer.ReplayMemory(capacity=250_000)
 
@@ -81,7 +80,7 @@ for taskID, envName in enumerate(tasksCL):
 
    print(f'Training on {envName} environment')
 
-   env = gymnasium.make(envName, config=config, render_mode=None)
+   env = gymnasium.make(envName, config = HighwayConfig, render_mode=None)
 
    steps = 0
 
@@ -100,7 +99,7 @@ for taskID, envName in enumerate(tasksCL):
       for t in count():
 
          stateTensor = torch.tensor(state, dtype=torch.float32, device=device).unsqueeze(0)
-         action = DQN.UtilFunctions.GetAction(env, stateTensor, policyNet, device, steps)
+         action = DQN.UtilFunctions.GetAction(env, stateTensor, policyNet, device, steps, epsDecay=eps)
          steps += 1
 
          obs, reward, terminated, truncated, info = env.step(action.item())
@@ -140,16 +139,16 @@ for taskID, envName in enumerate(tasksCL):
             break
 
       if update == 0:
-         print(f"{'Update':<8} | {'AvgRewardHighway':<5} | {'SuccessRateHighway':<5} | {'AvgRewardMerger':<5} | {'SuccessRateMerger':<5} |")
+         print(f"{'Update':<8} | {'AvgRewHighw':<15} | {'SRHighw':<15} | {'AvgRewMerger':<15} | {'SRMerger':<15} |")
          print("-" * 75)
 
       if update % 50 == 0:
          torch.save(policyNet.state_dict(), f"Continual_Learning/Models/CLpolicyNet_{update}_{envName}.pth")
 
-         resDict = Evaluate(update, envName, config, nEval = 10)
+         resDict = Evaluate(update, envName, nEval = 20)
 
          HavgRew, MavgRew = np.mean(resDict['Rewards'][0]), np.mean(resDict['Rewards'][1])
-         HsuccRate, MsuccRate = np.mean(~resDict['Crashed'][0]), np.mean(~resDict['Crashed'][1])
+         HsuccRate, MsuccRate = 1 - np.mean(resDict['Crashed'][0]), 1-np.mean(resDict['Crashed'][1])
 
          print(f"{update:<8} | {HavgRew:.5f} | {HsuccRate:.5f} | {MavgRew:.5f} | {MsuccRate:.5f} |")
 
