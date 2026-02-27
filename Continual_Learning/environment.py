@@ -13,9 +13,9 @@ class Environment:
    
    def HighwayEnv(self, config):
       
-      env = gymnasium.make('highway-v0', config = config,  render_mode='rgb_array')
+      env = gymnasium.make('highway-v0', config = config,  render_mode=None)
       return env
 
    def MergerEnv(self, config):
-      env = gymnasium.make('merge-v0', config = config, render_mode='rgb_array')
+      env = gymnasium.make('merge-v0', config = config, render_mode=None)
       return env

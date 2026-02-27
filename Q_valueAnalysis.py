@@ -33,11 +33,11 @@ config = {
    },
    'screen_height': 300,
    'screen_width': 1200,
-   'duration': 40,
-   "policy_frequency": 2
+   'duration': 20,
+   "policy_frequency": 3
 }
 
-env = gymnasium.make(envName, config=config, render_mode='human')
+env = gymnasium.make(envName, config=config, render_mode=None)
 
 state, _ = env.reset()
 
@@ -45,7 +45,7 @@ nActions = env.action_space.n
 stateShape = np.prod(env.observation_space.shape)
 
 agent = DQN(stateShape, nActions)
-checkpoint = torch.load("DDQN_Champion.pth", map_location=torch.device('cpu'))
+checkpoint = torch.load("DDQN_Champion1.pth", map_location=torch.device('cpu'))
 agent.load_state_dict(checkpoint)
 agent.eval()
 
@@ -78,7 +78,7 @@ with open(files['Data'], 'a', newline = '') as f2:
    SimNumber = 0
 
    while True:
-      SimNumber += 1
+
 
       state = torch.as_tensor(state, dtype=torch.float32).unsqueeze(0)
 
@@ -95,7 +95,7 @@ with open(files['Data'], 'a', newline = '') as f2:
 
       Data.writerow([SimNumber, reward, info['speed'], qList[0], qList[1], qList[2], qList[3], qList[4], action])
 
-      env.render()
+      #env.render()
 
       #update state
       state = nextState
@@ -103,6 +103,7 @@ with open(files['Data'], 'a', newline = '') as f2:
       if done or truncated:
          state, _ = env.reset()
          f2.flush()
+         SimNumber += 1
 
 
 env.close()

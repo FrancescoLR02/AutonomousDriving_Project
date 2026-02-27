@@ -2,7 +2,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from ReplayBuffer import *
+from DQN.ReplayBuffer import *
 
 
 epsStart = 0.9

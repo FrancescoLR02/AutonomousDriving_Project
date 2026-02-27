@@ -5,15 +5,22 @@ from itertools import count
 import random
 import tqdm as tqdm
 import csv
+import sys
+import os
 
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 
+from EvalFunction import *
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 import DQN.modelDQN
 import DQN.ReplayBuffer
 import DQN.UtilFunctions
+
 
 np.set_printoptions(linewidth=300, suppress=True, precision=5)
 
@@ -46,12 +53,12 @@ config = {
    'lanes_count': 3,
    "policy_frequency": 2,
    'right_lane_reward': 0,
-   'high_speed_reward': 0.6,
+   'high_speed_reward': 0.5,
 }
 
 
-tasksCL = ['highway-v0', 'merge-v0']
-epsPerTask = 4_000
+tasksCL = ['highway-fast-v0', 'merge-v0']
+epsPerTask = 200
 
 lr = 1e-4
 tau = 0.001
@@ -132,20 +139,20 @@ for taskID, envName in enumerate(tasksCL):
             episodeRewards.append(totalReward)
             break
 
-      if update % 50 == 0:
-            torch.save(policyNet.state_dict(), f"Continual_Learning/Models/CLpolicyNet_{update}_{envName}.pth")
-
       if update == 0:
-            print(f"{'Update':<8} | {'AvgReward':<5} | {'SuccessRate':<5} |")
-            print("-" * 75)
-      
-      #debug informations
-      if update % 50 == 0 and len(episodeRewards) > 0:
-         avgRev = np.mean(episodeRewards[-50:])
-         successRate = np.mean(success[-50:]) if len(success) > 0 else 0
-         print(f"{update:<8} | {avgRev:.5f} | {successRate:.5f}")
+         print(f"{'Update':<8} | {'AvgRewardHighway':<5} | {'SuccessRateHighway':<5} | {'AvgRewardMerger':<5} | {'SuccessRateMerger':<5} |")
+         print("-" * 75)
 
+      if update % 50 == 0:
+         torch.save(policyNet.state_dict(), f"Continual_Learning/Models/CLpolicyNet_{update}_{envName}.pth")
 
-         if avgRev > best_reward:
-            best_reward = avgRev
+         resDict = Evaluate(update, envName, config, nEval = 10)
+
+         HavgRew, MavgRew = np.mean(resDict['Rewards'][0]), np.mean(resDict['Rewards'][1])
+         HsuccRate, MsuccRate = np.mean(~resDict['Crashed'][0]), np.mean(~resDict['Crashed'][1])
+
+         print(f"{update:<8} | {HavgRew:.5f} | {HsuccRate:.5f} | {MavgRew:.5f} | {MsuccRate:.5f} |")
+
+         if HavgRew + MavgRew > best_reward:
+            best_reward = HavgRew + MavgRew
             torch.save(policyNet.state_dict(), f"CL_Champion_{envName}.pth")

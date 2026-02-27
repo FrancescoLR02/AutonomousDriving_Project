@@ -48,7 +48,7 @@ config = {
     'vehicle_density': 0.8
 }
 
-env = gymnasium.make(envName, config=config, render_mode=None)
+env = gymnasium.make(envName, config=config, render_mode='human')
 
 # Initialize your model and load parameters
 if baseline: 
@@ -111,7 +111,7 @@ with  open(files['Rewards'], 'a', newline = '') as f2:
         nextState, reward, done, truncated, info = env.step(action)
 
         avgSpeed.append(info['speed'])
-        #env.render()
+        env.render()
         #Compute final reward
         epReward += reward
 

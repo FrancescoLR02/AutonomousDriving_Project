@@ -43,7 +43,7 @@ config = {
    'vehicle_density': 0.8
 }
 
-env = gymnasium.make(envName, config=config, render_mode=None)
+env = gymnasium.make(envName, config=config, render_mode='human')
 # Evaluation loop
 state, _ = env.reset()
 
@@ -109,7 +109,7 @@ with open(files['Rewards'], 'a', newline = '') as f2: #open(files['Data'], 'a', 
 
       #dataWriter.writerow([info['speed'], info['action']])
 
-      #env.render()
+      env.render()
 
       #Compute final reward
       epReward += reward
