@@ -4,9 +4,9 @@
 
 Only the models, scripts and Analysis jupyter are given. The data gathered is only visualized in the Jupter Notebook.
 
-In the three main folders are presents the scripts to run the training of the models (PPO, DQN and CL framework) (PPO also present a parallelized version of the algorithm, but this was at least not used.)
+In the three main folders are presents the scripts to run the \textbf{training} of the models (PPO, DQN and CL framework) (PPO also present a parallelized version of the algorithm, but this was at least not used.)
 
-The optimal weights for each model are respectively ...
+To run the evaluations of the models:
 
 ### Baseline: 
 
@@ -28,10 +28,19 @@ run:
 python DQN_evaluate.py
 ```
 
-...
+### CL models
+run:
+```bash
+python CL_evaluate.py
+```
 
+for the DQN agent and:
+run:
+```bash
+python CL_evaluate.py True
+```
 
-
+for the Baseline model
 
 
 
