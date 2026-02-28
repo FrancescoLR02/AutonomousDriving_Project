@@ -48,7 +48,7 @@ config = {
     'vehicle_density': 0.8
 }
 
-env = gymnasium.make(envName, config=config, render_mode=None)
+env = gymnasium.make(envName, config=config, render_mode='human')
 
 # Initialize your model and load parameters
 if baseline: 
@@ -66,64 +66,40 @@ state, _ = env.reset()
 done, truncated = False, False
 
 
-fileName = {
-    True: 'Baseline',
-    False: 'PPO'
-}
+epReward = 0
+episode = 0
 
-files = {
-    'Data': f'Data/{fileName[baseline]}_agentControlActions_{pid}.csv',
-    'Rewards': f'Data/{fileName[baseline]}_agentControlRewards_{pid}.csv'
-}
-rewardsHeader = ['Crashed', 'Rewards', 'AvgSpeed', 'StdSpeed']
-actionsHeader = ['Speed', 'Action']
+avgSpeed = []
 
-needsHeader = {key: not os.path.isfile(path) for key, path in files.items()}
+while True:
+    episode += 1
 
+    if baseline: action = agent.BasePolicy(state)
+    else: 
+        state = torch.as_tensor(state, dtype=torch.float32).flatten().unsqueeze(0)
 
-#Write on file the inforations
-with  open(files['Rewards'], 'a', newline = '') as f2: 
+        with torch.no_grad():
 
-    rewardWriter = csv.writer(f2)
-    
-    if needsHeader['Rewards']:
-        rewardWriter.writerow(rewardsHeader)
+            logits = agent.Actor(state)
+            action = torch.argmax(logits).item()
+                
+    #Take a step in the simulation
+    nextState, reward, done, truncated, info = env.step(action)
 
+    avgSpeed.append(info['speed'])
+    env.render()
+    #Compute final reward
+    epReward += reward
 
-    epReward = 0
-    episode = 0
+    #update state
+    state = nextState
 
-    avgSpeed = []
-
-    while True:
-        episode += 1
-
-        if baseline: action = agent.BasePolicy(state)
-        else: 
-            state = torch.as_tensor(state, dtype=torch.float32).flatten().unsqueeze(0)
-
-            with torch.no_grad():
-
-                logits = agent.Actor(state)
-                action = torch.argmax(logits).item()
-                    
-        #Take a step in the simulation
-        nextState, reward, done, truncated, info = env.step(action)
-
-        avgSpeed.append(info['speed'])
-        #env.render()
-        #Compute final reward
-        epReward += reward
-
-        #update state
-        state = nextState
-
-        if done or truncated:
-            rewardWriter.writerow([info['crashed'], epReward, np.mean(avgSpeed), np.std(avgSpeed)])
-            state, _ = env.reset()
-            avgSpeed = []
-            epReward = 0
-            f2.flush()
+    if done or truncated:
+        #rewardWriter.writerow([info['crashed'], epReward, np.mean(avgSpeed), np.std(avgSpeed)])
+        state, _ = env.reset()
+        avgSpeed = []
+        epReward = 0
+        #f2.flush()
 
 
 env.close()
